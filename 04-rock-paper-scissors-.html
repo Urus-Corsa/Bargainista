@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+</head>
+<body>
+  <h1>
+    Let's Play Rock Paaper Scissors!!
+  </h1>
+  <button onclick="
+      player = 'rock'
+      console.log(`You picked ${player}, ${determineWinner()}`)
+    ">
+    Rock  
+  </button>
+  <button onclick="
+      player = 'paper'
+      console.log(`You picked ${player}, ${determineWinner()}`)
+    ">
+    Paper  
+  </button>
+  <button onclick="
+      player = 'scissors'
+      console.log(`You picked ${player}, ${determineWinner()}`)
+    ">
+    Scissors  
+  </button>
+  <script src="js-scripts/04-rock-paper-scissors.js">
+    console.log('Refrencing the JS script in js-scripts')
+  </script>
+</body>
+</html>

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Restaurant Order HTML</title>
+</head>
+<body>
+  <h1>
+    Restaurant Menu
+  </h1>
+  <button onclick="
+    totalCost = order+order*taxRate
+    console.log(`Order total before tax: ${order}\nTotal including tax(${taxRate*100}%): ${totalCost}`);
+  ">
+    Order Total
+  </button>
+
+  <button onclick="
+    console.log(`Added 1 water cup to the order`);
+  "> 
+    Add Water
+  </button>
+
+  <button onclick="
+    order += 2;
+    console.log(`Added 1 coffee to the order`);
+  ">
+    Add Coffee
+  </button>
+  
+  <button onclick="
+    order += 2;
+    console.log(`Added 1 soda to the order`); 
+  "> 
+    Add Soda
+  </button>
+  
+  <button onclick="
+    order += 3.5;
+    console.log(`Added 1 medium fries to the order`);
+  "> 
+    Add Medium Fries
+  </button> 
+
+  <button onclick="
+    order += 6;
+    console.log(`Added 1 burger to the order`);
+  "> 
+    Add Hamburger
+  </button>
+  
+  <button onclick="
+    order = 0;
+    console.log('Order discarded!'); 
+  "> 
+    Reset Order
+  </button>
+  
+  <script>
+    let order = 0;
+    let totalCost = 0;
+    const coffeePrice = 2;
+    const burgerPrice = 6;
+    const waterPrice = 0;
+    const sodaPrice = 2;
+    const friesPrice = 3.5;
+    const taxRate = 0.1;
+  </script>
+</body>
+</html>

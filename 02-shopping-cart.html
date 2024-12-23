@@ -17,39 +17,34 @@
 
   <button onclick="
     cart ++;
-    console.log(`Added ${cart-prev} item to the cart`);
-    prev = cart 
+    console.log(`Added 1 item to the cart`);
   ">
     Add to cart
   </button>
   
   <button onclick="
     cart += 2;
-    console.log(`Added ${cart-prev} items to the cart`);
-    prev = cart 
+    console.log(`Added 2 items to the cart`); 
   "> 
     +2
   </button>
   
   <button onclick="
     cart += 3;
-    console.log(`Added ${cart-prev} items to the cart`);
-    prev = cart 
+    console.log(`Added 3 items to the cart`);
   "> 
     +3
   </button>
   
   <button onclick="
     cart = 0;
-    console.log('Cart has been emptied');
-    prev = cart 
+    console.log('Cart has been emptied'); 
   "> 
     Reset cart
   </button>
   
   <script>
     let cart = 0;
-    let prev = cart;
   </script>
 </body>
 </html>
