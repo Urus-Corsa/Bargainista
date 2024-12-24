@@ -7,28 +7,34 @@
 </head>
 <body>
   <h1>
-    Let's Play Rock Paaper Scissors!!
+    Let's Play Rock Paper Scissors!!
   </h1>
   <button onclick="
-      player = 'rock'
-      console.log(`You picked ${player}, ${determineWinner()}`)
+      player.move = 'rock';
+      result = `You picked ${player.move}, ${determineWinner()}`;
+      console.log(result);
+      alert(result);
     ">
     Rock  
   </button>
   <button onclick="
-      player = 'paper'
-      console.log(`You picked ${player}, ${determineWinner()}`)
+      player.move = 'paper';
+      result = `You picked ${player.move}, ${determineWinner()}`;
+      console.log(result);
+      alert(result);
     ">
     Paper  
   </button>
   <button onclick="
-      player = 'scissors'
-      console.log(`You picked ${player}, ${determineWinner()}`)
+      player.move = 'scissors';
+      result = `You picked ${player.move}, ${determineWinner()}`;
+      console.log(result);
+      alert(result);
     ">
     Scissors  
   </button>
   <script src="js-scripts/04-rock-paper-scissors.js">
-    console.log('Refrencing the JS script in js-scripts')
+    console.log('Refrencing the JS script in js-scripts');
   </script>
 </body>
 </html>

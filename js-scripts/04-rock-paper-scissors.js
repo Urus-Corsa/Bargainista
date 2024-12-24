@@ -1,38 +1,75 @@
-let player;
+let player = {
+  move: undefined,
+  score: 0
+};
+let computer = {
+  move: undefined,
+  score: 0
+};
+let gameStats = {
+  // roundWinners: {
+  //   1: undefined,
+  // },
+  tiedRounds: 0
+};
 
-function getComputersMove(){
-  let randomNumber = Math.random()
-  if(0<=randomNumber && randomNumber<1/3){
-    return 'rock'
-  } else if(1/3<=randomNumber && randomNumber<2/3){
-    return 'paper'
-  } else {
-    return 'scissors'
-  }
+function setComputersMove(){
+  const randomNumber = Math.random();
+  // Ternary Operator
+  let computersMove = 
+  randomNumber < 1/3 ? 'rock' : 
+  randomNumber < 2/3 ? 'paper' : 
+  'scissors';
+  // return computersMove;
+  computer.move = computersMove;
+
+  // if(0<=randomNumber && randomNumber<1/3){
+  //   console.log('computer picked rock');
+  //   return 'rock';
+  // } else if(1/3<=randomNumber && randomNumber<2/3){
+  //   console.log('computer picked paper');
+  //   return 'paper';
+  // } else {
+  //   console.log('computer picked scissors');
+  //   return 'scissors';
+  // }
 }
 
 function determineWinner(){
-  let computer = getComputersMove();
-  let result = `Computer picked ${computer}.\n`
-  if(player === computer){
-    return result+'It is a tie!'
-  } else if (player === 'paper' && computer === 'rock' || player === 'rock' && computer === 'paper'){
-    if(computer === 'paper'){
-      return result+'Computer wins!'
+  // let roundsPlayed =  Object.keys(gameStats.roundWinners).length;
+  setComputersMove();
+  let result = `Computer picked ${computer.move}.\n`;
+  if(player.move === computer.move){
+    gameStats.tiedRounds ++;
+    result += 'It\'s a tie!';
+  } else if (player.move === 'paper' && computer.move === 'rock' || player.move === 'rock' && computer.move === 'paper'){
+    if(computer.move === 'paper'){
+      computer.score ++;
+      result += 'Computer wins!';
     }else{
-      return result+'You win!'
+      player.score ++;
+      result += 'You win!';
     }
-  } else if (player === 'paper' && computer === 'scissors' || player === 'scissors' && computer === 'paper'){
-    if(computer === 'scissors'){
-      return result+'Computer wins!'
+  } else if (player.move === 'paper' && computer.move === 'scissors' || player.move === 'scissors' && computer.move === 'paper'){
+    if(computer.move === 'scissors'){
+      computer.score ++;
+      result += 'Computer wins!';
     }else{
-      return result+'You win!'
+      player.score ++;
+      result += 'You win!';
     }
-  } else if (player === 'rock' && computer === 'scissors' || player === 'scissors' && computer === 'rock'){
-    if(computer === 'rock'){
-      return result+'Computer wins!'
+  } else if (player.move === 'rock' && computer.move === 'scissors' || player.move === 'scissors' && computer.move === 'rock'){
+    if(computer.move === 'rock'){
+      computer.score ++;
+      result += 'Computer wins!';
     }else{
-      return result+'You win!'
+      player.score ++;
+      result += 'You win!';
     }
+  } else {
+    console.log(`An error has occurred in determineWinner()\nPlayer: ${player.move}\nComputer: ${computer.move}`);
+    return;
   }
+  result += `\n-------- SCORE BOARD --------\nYour Score: ${player.score}\nComputer's Score: ${computer.score}\nTied Rounds: ${gameStats.tiedRounds}`;
+  return result;
 }
