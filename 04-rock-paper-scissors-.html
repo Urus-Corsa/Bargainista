@@ -10,29 +10,45 @@
     Let's Play Rock Paper Scissors!!
   </h1>
   <button onclick="
-      player.move = 'rock';
-      result = `You picked ${player.move}, ${determineWinner()}`;
-      console.log(result);
-      alert(result);
-    ">
+    player.move = 'rock';
+    result = `You picked ${player.move}, ${determineWinner()}`;
+    console.log(result);
+    alert(result);
+  ">
     Rock  
   </button>
   <button onclick="
-      player.move = 'paper';
-      result = `You picked ${player.move}, ${determineWinner()}`;
-      console.log(result);
-      alert(result);
-    ">
+    player.move = 'paper';
+    result = `You picked ${player.move}, ${determineWinner()}`;
+    console.log(result);
+    alert(result);
+  ">
     Paper  
   </button>
   <button onclick="
-      player.move = 'scissors';
-      result = `You picked ${player.move}, ${determineWinner()}`;
-      console.log(result);
-      alert(result);
-    ">
+    player.move = 'scissors';
+    result = `You picked ${player.move}, ${determineWinner()}`;
+    console.log(result);
+    alert(result);
+  ">
     Scissors  
   </button>
+  <button onclick="
+    const resetAlert = gameStats.reset();
+    console.log(resetAlert);
+    alert(resetAlert);
+  ">
+    Reset Stats
+  </button>
+  <div>
+    <button onclick="
+      const statsAlert = gameStats.show();
+      console.log(statsAlert);
+      alert(statsAlert);
+    ">
+      Show Stats
+    </button>
+  </div>
   <script src="js-scripts/04-rock-paper-scissors.js">
     console.log('Refrencing the JS script in js-scripts');
   </script>
