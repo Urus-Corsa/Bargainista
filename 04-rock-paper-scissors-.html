@@ -6,6 +6,7 @@
   <title>Document</title>
 </head>
 <body>
+  <script src="js-scripts/04-rock-paper-scissors.js"></script>
   <h1>
     Let's Play Rock Paper Scissors!!
   </h1>
@@ -14,6 +15,7 @@
     result = `You picked ${player.move}, ${determineWinner()}`;
     console.log(result);
     alert(result);
+    gameStats.displayGameStats();
   ">
     Rock  
   </button>
@@ -22,6 +24,7 @@
     result = `You picked ${player.move}, ${determineWinner()}`;
     console.log(result);
     alert(result);
+    gameStats.displayGameStats();
   ">
     Paper  
   </button>
@@ -30,6 +33,7 @@
     result = `You picked ${player.move}, ${determineWinner()}`;
     console.log(result);
     alert(result);
+    gameStats.displayGameStats();
   ">
     Scissors  
   </button>
@@ -37,20 +41,32 @@
     const resetAlert = gameStats.reset();
     console.log(resetAlert);
     alert(resetAlert);
+    gameStats.displayGameStats();
   ">
     Reset Stats
   </button>
-  <div>
-    <button onclick="
+  <div class="js-game-stats-board">
+    <h4>
+      Live Scoreboard 
+    </h4>
+    <h5 class="js-players-score">
+    </h5>
+    <h5 class="js-computers-score">
+    </h5>
+    <h5 class="js-tied-rounds">
+    </h5>
+    <h5 class="js-total-rounds">
+    </h5>
+    <!-- <button onclick="
       const statsAlert = gameStats.show();
       console.log(statsAlert);
       alert(statsAlert);
     ">
-      Show Stats
-    </button>
+    Show Stats
+    </button> -->
+    <script>
+      gameStats.displayGameStats();
+    </script>
   </div>
-  <script src="js-scripts/04-rock-paper-scissors.js">
-    console.log('Refrencing the JS script in js-scripts');
-  </script>
 </body>
 </html>

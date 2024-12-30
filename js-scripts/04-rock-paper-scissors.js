@@ -1,22 +1,31 @@
-let player = {
+const player = {
   /*
     upon initilization of player object as well as its 'move' property,
     we set it to //* null == intentionally want it to be empty rather than using 'undefined'
   */
   move: null,
-  score: parseInt(localStorage.getItem('playerScore'), 10) || 0
+  score: parseInt(localStorage.getItem('playerScore'), 10) || 0,
+  displayCurrentScore(){
+    document.querySelector('.js-game-stats-board .js-players-score').innerHTML = `Your Score: ${this.score}`;
+  }
 };
-let computer = {
+const computer = {
   move: null,
-  'score': parseInt(localStorage.getItem('computerScore'), 10) || 0
+  'score': parseInt(localStorage.getItem('computerScore'), 10) || 0,
+  displayCurrentScore(){
+    document.querySelector('.js-game-stats-board .js-computers-score').innerHTML = `Computer's Score: ${this.score}`;
+  }
 };
-let gameStats = {
+const gameStats = {
   ['tiedRounds']: parseInt(localStorage.getItem('ties'), 10) || 0,
-  // when explicitly defining a method, it can also be done using //* shorthand method shortcut
-  // show: function showStats(){
-  show() {
-    const scoreBoard = `-------- SCORE BOARD --------\nYour Score: ${player.score}\nComputer's Score: ${computer.score}\nTied Rounds: ${this.tiedRounds}`;
-    return scoreBoard;
+  // when explicitly defining a method, it can also be done using //* shorthand method shortcut -> display: function  displayGameStats() {} => displayGameStats() {}
+  displayGameStats() {
+    player.displayCurrentScore();
+    computer.displayCurrentScore();
+    document.querySelector('.js-game-stats-board .js-tied-rounds').innerHTML = `Tied Rounds: ${this.tiedRounds}`;
+    document.querySelector('.js-game-stats-board .js-total-rounds').innerHTML = `Total Rounds: ${player.score+computer.score+this.tiedRounds}`;
+    // const scoreboard = `-------- SCOREBOARD --------\nPlayer's Score: ${player.score}\nComputer's Score: ${computer.score}\nTied Rounds: ${this.tiedRounds}`;
+    // return scoreboard;
   },
   reset: function resetGameStats(){ //* functions stored inside of an object == methods
     // reset local storage objects
@@ -93,6 +102,6 @@ function determineWinner(){
   } else {
     result = `An error has occurred in determineWinner()\nPlayer: ${player.move}\nComputer: ${computer.move}`;
   }
-  result += `\n${gameStats.show()}`
+  // result += `\n${gameStats.show()}`
   return result;
 }
