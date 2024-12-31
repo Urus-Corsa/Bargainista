@@ -11,52 +11,86 @@
     Let's Play Rock Paper Scissors!!
   </h1>
   <button onclick="
-    player.move = 'rock';
+    player.setMove('rock');
     result = `You picked ${player.move}, ${determineWinner()}`;
     console.log(result);
-    alert(result);
-    gameStats.displayGameStats();
+    // alert(result);
+    scoreboard.display();
   ">
     Rock  
   </button>
   <button onclick="
-    player.move = 'paper';
+    player.setMove('paper');
     result = `You picked ${player.move}, ${determineWinner()}`;
     console.log(result);
-    alert(result);
-    gameStats.displayGameStats();
+    // alert(result);
+    scoreboard.display();
   ">
     Paper  
   </button>
   <button onclick="
-    player.move = 'scissors';
+    player.setMove('scissors');
     result = `You picked ${player.move}, ${determineWinner()}`;
     console.log(result);
-    alert(result);
-    gameStats.displayGameStats();
+    // alert(result);
+    scoreboard.display();
   ">
     Scissors  
   </button>
-  <button onclick="
-    const resetAlert = gameStats.reset();
-    console.log(resetAlert);
-    alert(resetAlert);
-    gameStats.displayGameStats();
-  ">
-    Reset Stats
-  </button>
-  <div class="js-game-stats-board">
+  <div class="js-stats-board">
     <h4>
-      Live Scoreboard 
+      Live Scoreboard
+      <button onclick="
+        const resetAlert = scoreboard.reset();
+        console.log(resetAlert);
+        // alert(resetAlert);
+        scoreboard.display();
+      ">
+        Reset Stats
+      </button>
     </h4>
-    <h5 class="js-players-score">
-    </h5>
-    <h5 class="js-computers-score">
-    </h5>
-    <h5 class="js-tied-rounds">
-    </h5>
-    <h5 class="js-total-rounds">
-    </h5>
+
+    <div class="js-players-stats">
+      <p style="font-size: medium;">
+        Your Stats
+      </p>
+      <p style="font-size: small;"
+        class="js-players-score">
+      </p>
+      <p style="font-size: small;"
+        class="js-players-last-move">
+      </p>
+    </div>
+
+    <div class="js-computers-stats">
+      <p style="font-size: medium;">
+        Computer's Stats
+      </p>
+      <p style="font-size: small;"
+        class="js-computers-score">
+      </p>
+      <p style="font-size: small;"
+        class="js-computers-last-move">
+      </p>
+    </div>
+
+    <div class="js-game-stats">
+      <p style="font-size: medium;">
+        Game Stats
+      </p>
+      <p style="font-size: small;"
+        class="js-front-runner">
+      </p>
+      <p style="font-size: small;"
+        class="js-last-round-result">
+      </p>
+      <p style="font-size: small;"
+        class="js-tied-rounds">
+      </p>
+      <p style="font-size: small;"
+        class="js-total-rounds">
+      </p>
+    </div>
     <!-- <button onclick="
       const statsAlert = gameStats.show();
       console.log(statsAlert);
@@ -65,7 +99,7 @@
     Show Stats
     </button> -->
     <script>
-      gameStats.displayGameStats();
+      scoreboard.display();
     </script>
   </div>
 </body>
