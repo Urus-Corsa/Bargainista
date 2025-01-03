@@ -5,7 +5,7 @@ const player = {
   */
   move: localStorage.getItem('playerMove') || '',
   setMove(pickedMove){
-    this.move = pickedMove
+    this.move = pickedMove.toLowerCase()
     localStorage.setItem('playerMove', pickedMove);
   },
   score: parseInt(localStorage.getItem('playerScore'), 10) || 0,
@@ -107,7 +107,7 @@ function determineWinner(){
   
   //*destructuring, can only be used if the variable name is the same as object's property name
   let { tiedRounds } = gameStats; 
-  let result = `Computer played ${computer.move}.\n`;
+  let result = `You picked ${player.move}, Computer played ${computer.move}.\n`;
   if(player.move === computer.move){
     tiedRounds++;
     gameStats.tiedRounds = tiedRounds;
@@ -159,5 +159,6 @@ function determineWinner(){
     return `An error has occurred in determineWinner()\nPlayer: ${player.move}\nComputer: ${computer.move}`;
   }
   localStorage.setItem('lastRoundResult', gameStats.lastRoundResult);
+  console.log(result);
   return result;
 }

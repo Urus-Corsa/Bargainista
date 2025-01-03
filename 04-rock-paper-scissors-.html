@@ -10,29 +10,43 @@
   <h1>
     Let's Play Rock Paper Scissors!!
   </h1>
+  <p>
+    <input placeholder="Desired move" class="js-players-move-input"
+      onkeydown="
+        if(event.key === 'Enter'){
+          player.setMove(document.querySelector('.js-players-move-input').value);
+          determineWinner();
+          scoreboard.display();
+        }
+      "
+    >
+    <button
+      onclick="
+        player.setMove(document.querySelector('.js-players-move-input').value);
+        determineWinner();
+        scoreboard.display();
+      "
+    >
+      Play!
+    </button>
+  </p>
   <button onclick="
     player.setMove('rock');
-    result = `You picked ${player.move}, ${determineWinner()}`;
-    console.log(result);
-    // alert(result);
+    determineWinner();
     scoreboard.display();
   ">
     Rock  
   </button>
   <button onclick="
     player.setMove('paper');
-    result = `You picked ${player.move}, ${determineWinner()}`;
-    console.log(result);
-    // alert(result);
+    determineWinner();
     scoreboard.display();
   ">
     Paper  
   </button>
   <button onclick="
     player.setMove('scissors');
-    result = `You picked ${player.move}, ${determineWinner()}`;
-    console.log(result);
-    // alert(result);
+    determineWinner();
     scoreboard.display();
   ">
     Scissors  
@@ -43,7 +57,6 @@
       <button onclick="
         const resetAlert = scoreboard.reset();
         console.log(resetAlert);
-        // alert(resetAlert);
         scoreboard.display();
       ">
         Reset Stats
@@ -91,13 +104,6 @@
         class="js-total-rounds">
       </p>
     </div>
-    <!-- <button onclick="
-      const statsAlert = gameStats.show();
-      console.log(statsAlert);
-      alert(statsAlert);
-    ">
-    Show Stats
-    </button> -->
     <script>
       scoreboard.display();
     </script>
