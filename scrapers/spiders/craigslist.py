@@ -2,12 +2,10 @@ import scrapy
 from scrapy.loader import ItemLoader
 from datetime import datetime
 import re
-import json
-import logging
 from ..items import CraigslistCarItem
 
 class CraigslistSpider(scrapy.Spider):
-    name = 'craigslist'
+    name = 'craigsspider'
     
     def __init__(self, locations=None, *args, **kwargs):
         super(CraigslistSpider, self).__init__(*args, **kwargs)
@@ -27,11 +25,11 @@ class CraigslistSpider(scrapy.Spider):
     def parse(self, response):
         self.logger.info(f"Parsing response from: {response.url}")
         
-        self.logger.debug("Full HTML structure:")
-        # self.logger.debug(response.text[:2000])
-        f = open("res.txt", "w")
-        f.write(response.text)
-        f.close()
+        # self.logger.debug("Full HTML structure:")
+        # # self.logger.debug(response.text[:2000])
+        # f = open("res.txt", "w")
+        # f.write(response.text)
+        # f.close()
         
         listings = response.css('body[class="no-js search"]').css('ol[class="cl-static-search-results"]').css('li[class="cl-static-search-result"]')
         self.logger.debug(f"Listings found: {bool(listings)}")
