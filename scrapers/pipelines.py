@@ -21,7 +21,12 @@ class MongoDBPipeline:
     
     def close_spider(self, spider):
         if self._db:
-            self._db.client.close()
+            try:
+                if hasattr(self._db, 'client') and self._db.client:
+                    self._db.client.close()
+                    self.logger.info("MongoDB client connection closed successfully")
+            except Exception as e:
+                self.logger.error(f"Error closing MongoDB client: {str(e)}")
     
     def process_item(self, item, spider):
         adapter = ItemAdapter(item)
