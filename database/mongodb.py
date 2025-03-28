@@ -1,15 +1,55 @@
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import List, Dict, Any
-from pymongo import MongoClient
+from pymongo import MongoClient, uri_parser
 from bson import ObjectId
 import logging
-# from models.listings import CarListing  #pydantic
+import certifi
+import time
+
 class Database:
     def __init__(self, connection_string: str):
         self.logger = logging.getLogger(__name__)
-        self.client = MongoClient(connection_string)
-        self.db = self.client.bargainista
-        self.logger.info("Database connection initialized")
+        self.connection_string = connection_string
+        self.client = None
+        self.db = None
+        self._connect_with_retry()
+
+    def _connect_with_retry(self, max_retries=3, retry_delay=2):
+        retries = 0
+        last_exception = None
+
+        while retries < max_retries:
+            try:
+                self.logger.info(f"Attempting to connect to MongoDB (attempt {retries+1}/{max_retries})")
+                
+                # Parse connection string to extract database name
+                parsed_uri = uri_parser.parse_uri(self.connection_string)
+                db_name = parsed_uri.get('database') or 'bargainista'
+                
+                # Create MongoDB client with generous timeouts
+                self.client = MongoClient(
+                    self.connection_string,
+                    serverSelectionTimeoutMS=10000,
+                    connectTimeoutMS=10000,
+                    socketTimeoutMS=20000,
+                    ssl=True,
+                    tlsCAFile=certifi.where()
+                )
+                
+                self.client.admin.command('ping')
+                
+                self.db = self.client[db_name]
+                self.logger.info(f"Successfully connected to MongoDB database: {db_name}")
+                return
+            except Exception as e:
+                last_exception = e
+                self.logger.warning(f"Connection attempt {retries+1} failed: {str(e)}")
+                retries += 1
+                if retries < max_retries:
+                    time.sleep(retry_delay)
+        
+        self.logger.error(f"Failed to connect to MongoDB after {max_retries} attempts. Last error: {str(last_exception)}")
+        
 
     def listing_exists(self, listing_id: str) -> bool:
         try:
@@ -34,17 +74,3 @@ class Database:
         except Exception as e:
             self.logger.error(f"Failed to insert listing: {str(e)}")
             raise
-
-    def _build_similar_query(self, make: str, model: str, year: int, max_age_days: int) -> dict:
-        return {
-            'make': make,
-            'model': model,
-            'year': {'$gte': year - 1, '$lte': year + 1},
-            'scraped_at': {'$gte': datetime.now() - timedelta(days=max_age_days)}
-        }
-
-    def get_similar_listings(self, make: str, model: str, year: int, max_age_days: int = 30) -> List[Dict[str, Any]]: #List[CarListing] pydantic
-        query = self._build_similar_query(make, model, year, max_age_days)
-        cursor = self.db.listings.find(query)
-        return list(cursor)
-        # return [CarListing(**doc) for doc in await cursor.to_list(length=100)] #pydantic
