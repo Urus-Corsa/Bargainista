@@ -3,6 +3,10 @@ from database.mongodb import Database
 from datetime import datetime, timezone
 import logging
 import zoneinfo
+import os
+import requests
+from PIL import Image
+from io import BytesIO
 
 class MongoDBPipeline:
     def __init__(self, mongo_uri):
@@ -53,4 +57,60 @@ class MongoDBPipeline:
         except Exception as e:
             self.logger.error(f"Failed to insert item: {str(e)}")
             raise      
+        return item
+
+class ImageDownloadPipeline:
+    def __init__(self, images_dir):
+        self.images_dir = images_dir
+        self.logger = logging.getLogger(__name__)
+        
+    @classmethod
+    def from_crawler(cls, crawler):
+        return cls(
+            images_dir=crawler.settings.get('IMAGES_STORE', 'images')
+        )
+        
+    def open_spider(self, spider):
+        """Ensure the images directory exists when the spider starts"""
+        if not os.path.exists(self.images_dir):
+            os.makedirs(self.images_dir)
+            self.logger.info(f"Created images directory: {self.images_dir}")
+    
+    def process_item(self, item, spider):
+        """Download images for the listing and store their local paths"""
+        adapter = ItemAdapter(item)
+        listing_id = adapter.get('listing_id')
+        image_urls = adapter.get('image_urls', [])
+        
+        if not listing_id:
+            self.logger.warning("No listing_id found for item, skipping image download")
+            return item
+            
+        if not image_urls:
+            self.logger.debug(f"No image URLs found for listing {listing_id}")
+            return item
+        
+        # Create listing-specific directory
+        listing_dir = os.path.join(self.images_dir, listing_id)
+        if not os.path.exists(listing_dir):
+            os.makedirs(listing_dir)
+            
+        downloaded_images = []
+        for i, url in enumerate(image_urls):
+            try:
+                response = requests.get(url, timeout=30)
+                if response.status_code != 200:
+                    self.logger.warning(f"Failed to download image {url}, status code: {response.status_code}")
+                    continue
+                    
+                img = Image.open(BytesIO(response.content))
+                img_path = os.path.join(listing_dir, f"{i}.jpg")
+                img.save(img_path)
+                downloaded_images.append(img_path)
+                self.logger.debug(f"Downloaded image {i+1}/{len(image_urls)} for listing {listing_id}")
+            except Exception as e:
+                self.logger.error(f"Failed to download/process image {url}: {str(e)}")
+                
+        adapter['image_paths'] = downloaded_images
+        self.logger.info(f"Downloaded {len(downloaded_images)}/{len(image_urls)} images for listing {listing_id}")
         return item

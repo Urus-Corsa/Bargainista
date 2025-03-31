@@ -12,9 +12,11 @@ CONCURRENT_REQUESTS = 5
 DOWNLOAD_DELAY = 3
 COOKIES_ENABLED = False
 ITEM_PIPELINES = {
-   'scrapers.pipelines.MongoDBPipeline': 300,
+   'scrapers.pipelines.MongoDBPipeline': 200,
+   'scrapers.pipelines.ImageDownloadPipeline': 300,
 }
 MONGODB_URI = os.getenv('MONGODB_CONNECTION')
+IMAGES_STORE = os.getenv('IMAGES_STORE', 'images')
 AUTOTHROTTLE_ENABLED = True
 AUTOTHROTTLE_START_DELAY = 5
 AUTOTHROTTLE_MAX_DELAY = 60
