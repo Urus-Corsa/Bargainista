@@ -36,6 +36,7 @@ class CraigslistCarItem(scrapy.Item):
     year = scrapy.Field(input_processor=MapCompose(extract_year), output_processor=TakeFirst())
     mileage = scrapy.Field(output_processor=TakeFirst())
     image_urls = scrapy.Field()
+    image_paths = scrapy.Field()
     
     condition = scrapy.Field(output_processor=TakeFirst())
     cylinders = scrapy.Field(output_processor=TakeFirst())

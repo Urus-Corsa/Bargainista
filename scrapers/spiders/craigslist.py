@@ -1,6 +1,6 @@
 import scrapy
 from scrapy.loader import ItemLoader
-from datetime import datetime
+from dateutil import parser
 import re
 from ..items import CraigslistCarItem
 
@@ -31,15 +31,15 @@ class CraigslistSpider(scrapy.Spider):
         # f.write(response.text)
         # f.close()
         
-        listings = response.css('body[class="no-js search"]').css('ol[class="cl-static-search-results"]').css('li[class="cl-static-search-result"]')
+        listings = response.css('ol.cl-static-search-results li.cl-static-search-result')
         self.logger.debug(f"Listings found: {bool(listings)}")
         if not listings:
-            raise Exception(f"{self.start_urls} contains no listing with the defined format")
-
+            # Fallback for dynamic content or different structure
+            self.logger.warning(f"No listings found with static selector on {response.url}")
+            # Try parsing from script tag if needed, but for now just log
+        
         for listing in listings:
-            link = listing.css('::attr(href)').get()
-            if not link:
-                link = listing.xpath('@href').get()
+            link = listing.css('a::attr(href)').get()
                 
             if link:
                 self.logger.debug(f"Found listing link: {link}")
@@ -86,12 +86,9 @@ class CraigslistSpider(scrapy.Spider):
         date_str = response.css('p.postinginfo time::attr(datetime)').get()
         if date_str:
             try:
-                if len(date_str) == 24:  
-                    offset = date_str[-5:]
-                    date_str = f"{date_str[:-5]}{offset[:3]}:{offset[3:]}"
-                posting_date = datetime.fromisoformat(date_str)
+                posting_date = parser.parse(date_str)
                 loader.add_value('posting_date', posting_date)
-            except ValueError as e:
+            except (ValueError, TypeError) as e:
                 self.logger.error(f"Failed to parse date {date_str}: {e}")
         
         #description

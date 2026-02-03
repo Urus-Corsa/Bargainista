@@ -21,6 +21,7 @@ lxml==5.3.1
 motor==3.7.0
 packaging==24.2
 parsel==1.10.0
+pillow==11.1.0
 Protego==0.4.0
 pyasn1==0.6.1
 pyasn1_modules==0.4.1
@@ -43,3 +44,4 @@ typing_extensions==4.13.0
 urllib3==1.26.6
 w3lib==2.3.1
 zope.interface==7.2
+python-dateutil>=2.8.2
