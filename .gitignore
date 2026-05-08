@@ -1,13 +1,44 @@
+# Python
 venv/
-node_modules/
+__pycache__/
+*.py[cod]
+*.pyo
 .python-version
-.DS_Store
-.vscode
+
+# Environment
 .env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+.vscode/
+.cursor/
+
+# Logs
+*.log
 spider_logs/
-.cursor
+
+# Data artifacts (legacy scraper outputs)
 images/
+res.txt
+
+# Dev utilities (not part of the project)
 interview_prep/
 helpers/
-*pycache*
-utils/new_logging.py
+
+# Legacy WIP files
+legacy_scraper/utils/new_logging.py
+
+# Build / packaging
+dist/
+build/
+*.egg-info/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Project-specific secrets / instructions
+CLAUDE.md
