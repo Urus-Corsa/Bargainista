@@ -1,0 +1,19 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+# gcc and libpq-dev are required to compile asyncpg's C extensions
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libpq-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install dependencies before copying app code so this layer is cached
+# and only invalidated when requirements.txt changes, not on every code edit.
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Default process for the api service; worker overrides this in docker-compose.
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
