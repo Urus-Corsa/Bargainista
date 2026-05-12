@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     openai_api_key: str = ""
 
+    # Admin API key — protects depreciation config CRUD endpoints
+    # Set a strong random value in .env; empty string disables admin endpoints
+    admin_api_key: str = ""
+
     debug: bool = False
 
 

@@ -1,9 +1,14 @@
 """SQLAlchemy ORM models.
 
-Three tables:
+Analysis tables:
   AnalysisRun   — one row per user-submitted analysis request
   AgentResult   — one row per agent per run (discriminated by agent_name)
   FinalReport   — one row per run, written when the synthesiser completes
+
+Depreciation config tables (dynamic — updated via admin API, never hardcoded):
+  DepreciationCategory  — retention curve per vehicle category + range band
+  BrandModifier         — per-brand reliability/demand multiplier
+  VariantOverride       — model/engine-specific adjustments that contradict brand average
 """
 
 from __future__ import annotations
@@ -148,3 +153,89 @@ class FinalReport(Base):
     )
 
     run: Mapped[AnalysisRun] = relationship("AnalysisRun", back_populates="final_report")
+
+
+# ---------------------------------------------------------------------------
+# Depreciation config — dynamic data managed via admin API
+# ---------------------------------------------------------------------------
+
+
+class DepreciationCategory(Base):
+    """Retention curve for a vehicle category.
+
+    curve_values: JSON array of 11 floats — index = vehicle age in years (0–10).
+    Values represent fraction of original MSRP retained.
+    e.g. [1.0, 0.79, 0.67, ...] means year-0 = 100%, year-1 = 79%, etc.
+
+    range_band: symmetric ± fraction applied to the point estimate at output time.
+    e.g. 0.08 → low = estimate × 0.92, high = estimate × 1.08.
+    """
+
+    __tablename__ = "depreciation_categories"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    curve_values: Mapped[list] = mapped_column(JSONB, nullable=False)
+    range_band: Mapped[float] = mapped_column(Float, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    source_note: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class BrandModifier(Base):
+    """Per-brand multiplier on the category retention curve.
+
+    modifier: added to 1.0 before multiplying the category value.
+    e.g. +0.06 for Toyota means retained = category_value × 1.06.
+    Negative values reduce retention (BMW -0.04 → × 0.96).
+
+    brand_name: stored lowercase, matched case-insensitively at query time.
+    segment: informational — everyday | luxury | enthusiast | all.
+    """
+
+    __tablename__ = "brand_modifiers"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    brand_name: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    modifier: Mapped[float] = mapped_column(Float, nullable=False)
+    segment: Mapped[str] = mapped_column(String(32), nullable=False, default="all")
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    source_note: Mapped[str] = mapped_column(Text, nullable=False)
+
+
+class VariantOverride(Base):
+    """Model/engine-specific adjustment on top of the brand modifier.
+
+    Applied when make + any model_keyword + any engine_keyword all match,
+    and vehicle year falls within [year_from, year_to] (both inclusive, both nullable).
+
+    model_keywords: JSON array of strings — any match triggers the override.
+    engine_keywords: JSON array of strings — any match triggers the override.
+                     If empty array, engine keyword matching is skipped.
+
+    modifier: same sign convention as BrandModifier.
+    """
+
+    __tablename__ = "variant_overrides"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    make: Mapped[str] = mapped_column(String(64), nullable=False)
+    model_keywords: Mapped[list] = mapped_column(JSONB, nullable=False)
+    engine_keywords: Mapped[list] = mapped_column(JSONB, nullable=False, default=list)
+    year_from: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    year_to: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    modifier: Mapped[float] = mapped_column(Float, nullable=False)
+    notes: Mapped[str] = mapped_column(Text, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+    source_note: Mapped[str] = mapped_column(Text, nullable=False)
