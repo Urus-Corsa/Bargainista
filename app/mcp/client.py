@@ -36,7 +36,7 @@ async def call_tool(tool_name: str, arguments: dict) -> dict | None:
         Parsed result dict from the tool, or None if the call failed after retry.
     """
     url = _MCP_TOOL_ENDPOINT.format(
-        base=settings.MCP_SERVER_URL.rstrip("/"),
+        base=settings.mcp_server_url.rstrip("/"),
         tool=tool_name,
     )
 
