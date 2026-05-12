@@ -12,14 +12,35 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MCP_SERVER_URL: http://mcp:8001
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mcp:
+        condition: service_started
     env_file:
       - path: .env
         required: false      # API keys live here; stack still starts without them
+
+  mcp:
+    build: .
+    command: python -m app.mcp.vehicle_data
+    volumes:
+      - ./app:/app/app
+    ports:
+      - "8001:8001"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      MCP_HOST: 0.0.0.0
+      MCP_PORT: "8001"
+    depends_on:
+      redis:
+        condition: service_healthy
+    env_file:
+      - path: .env
+        required: false
 
   worker:
     build: .
@@ -31,11 +52,14 @@ services:
       REDIS_URL: redis://redis:6379/0
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/0
+      MCP_SERVER_URL: http://mcp:8001
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
+      mcp:
+        condition: service_started
     env_file:
       - path: .env
         required: false

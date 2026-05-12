@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     celery_broker_url: str = "redis://localhost:6379/0"
     celery_result_backend: str = "redis://localhost:6379/0"
 
+    # MCP server — http://mcp:8001 inside Docker, http://localhost:8001 outside
+    mcp_server_url: str = "http://localhost:8001"
+
     # AI API keys — empty by default; required from Phase 3 onward
     anthropic_api_key: str = ""
     openai_api_key: str = ""

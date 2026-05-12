@@ -262,6 +262,13 @@ class HistoryAgentResult(BaseModel):
                     "Each item's estimate_source will be 'listing_mention'. "
                     "Used by the Finance agent for total cost of ownership.",
     )
+    data_sources_available: list[str] = Field(
+        default_factory=list,
+        description="MCP tools that successfully returned data during this analysis. "
+                    "e.g. ['get_vehicle_recalls', 'get_safety_ratings']. "
+                    "Empty entries indicate degraded mode — synthesiser weights "
+                    "risk_score lower when recall data was unavailable.",
+    )
     summary: str = Field(..., description="Plain-language history summary for the synthesiser")
 
 
