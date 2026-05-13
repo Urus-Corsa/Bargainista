@@ -343,10 +343,15 @@ class FinanceAgentResult(BaseModel):
     Receives Vision and History results as context. Aggregates cosmetic repair
     costs (from Vision) and mechanical/maintenance costs (from History) into a
     full cost-of-ownership picture alongside depreciation and financing analysis.
+
+    finance_score is Optional — it is None when the independent phase failed and
+    market value could not be computed. The synthesiser excludes None scores from
+    the overall_score average.
     """
 
-    finance_score: int = Field(
-        ..., ge=1, le=10, description="10 = excellent value, 1 = significantly overpriced"
+    finance_score: int | None = Field(
+        None, ge=1, le=10, description="10 = excellent value, 1 = significantly overpriced. "
+                                       "None if market value computation failed."
     )
     estimated_market_value: int = Field(
         ..., ge=0, description="Agent's estimated fair market value in USD"
@@ -401,11 +406,14 @@ class FinalReport(BaseModel):
 
     recommendation: Recommendation
     overall_score: float = Field(
-        ..., ge=1.0, le=10.0, description="Average of the three agent scores"
+        ..., ge=1.0, le=10.0,
+        description="Average of available agent scores. Excludes scores from failed agents.",
     )
-    vision_score: int = Field(..., ge=1, le=10)
-    history_score: int = Field(..., ge=1, le=10)
-    finance_score: int = Field(..., ge=1, le=10)
+    # Scores are Optional — None means that agent failed and its score is excluded
+    # from overall_score. The frontend renders these as N/A when None.
+    vision_score: int | None = Field(None, ge=1, le=10)
+    history_score: int | None = Field(None, ge=1, le=10)
+    finance_score: int | None = Field(None, ge=1, le=10)
     key_reasons: list[str] = Field(
         ...,
         min_length=1,
@@ -430,5 +438,6 @@ class FinalReport(BaseModel):
     calc_asking_price: int = Field(..., description="Asking price in USD")
     calc_mileage: int = Field(..., description="Odometer reading in miles")
     calc_vehicle_age_years: int = Field(..., description="Vehicle age used in Finance agent scoring")
-    calc_estimated_market_value: int = Field(..., description="Finance agent market value estimate")
-    calc_range_band: float = Field(..., description="Depreciation category range band")
+    # None when Finance independent phase failed — client-side recalculation disabled in that case
+    calc_estimated_market_value: int | None = Field(None, description="Finance agent market value estimate")
+    calc_range_band: float | None = Field(None, description="Depreciation category range band")
