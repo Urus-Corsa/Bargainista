@@ -55,9 +55,13 @@ class AgentName(str, enum.Enum):
 
 
 class RecommendationEnum(str, enum.Enum):
-    BUY = "BUY"
+    GREAT_BUY = "GREAT_BUY"
+    STRONG_BUY = "STRONG_BUY"
+    LEAN_BUY = "LEAN_BUY"
     NEGOTIATE = "NEGOTIATE"
-    PASS = "PASS"
+    NEUTRAL = "NEUTRAL"
+    LEAN_PASS = "LEAN_PASS"
+    STRONG_PASS = "STRONG_PASS"
 
 
 # ---------------------------------------------------------------------------

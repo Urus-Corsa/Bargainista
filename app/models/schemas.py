@@ -33,8 +33,10 @@ class RepairCategory(str, Enum):
 
 
 class EstimateSource(str, Enum):
-    visual = "visual"                    # detected from photos by Vision agent
-    listing_mention = "listing_mention"  # mentioned in listing text or history report
+    visual = "visual"                          # detected from photos by Vision agent
+    listing_mention = "listing_mention"        # explicitly stated in listing or history report text
+    history_inference = "history_inference"    # deduced from service history gaps (e.g. brakes not
+                                               # mentioned since 60k miles ago on a car now at 120k)
 
 
 class DamageSeverity(str, Enum):
@@ -51,9 +53,30 @@ class ConfidenceLevel(str, Enum):
 
 
 class Recommendation(str, Enum):
-    BUY = "BUY"
-    NEGOTIATE = "NEGOTIATE"
-    PASS = "PASS"
+    GREAT_BUY = "GREAT_BUY"    # 9.0 – 10.0  exceptional deal
+    STRONG_BUY = "STRONG_BUY"  # 8.0 – 8.99  strong deal, minor concerns only
+    LEAN_BUY = "LEAN_BUY"      # 7.0 – 7.99  good deal with caveats
+    NEGOTIATE = "NEGOTIATE"    # 6.0 – 6.99  fair vehicle, price needs work
+    NEUTRAL = "NEUTRAL"        # 5.0 – 5.99  mixed signals, go with your gut
+    LEAN_PASS = "LEAN_PASS"    # 4.0 – 4.99  more concerns than positives
+    STRONG_PASS = "STRONG_PASS"  # < 4.0     significant red flags, walk away
+
+
+def score_to_recommendation(overall_score: float) -> Recommendation:
+    """Map an overall_score (1–10) to the seven-tier Recommendation enum."""
+    if overall_score >= 9.0:
+        return Recommendation.GREAT_BUY
+    if overall_score >= 8.0:
+        return Recommendation.STRONG_BUY
+    if overall_score >= 7.0:
+        return Recommendation.LEAN_BUY
+    if overall_score >= 6.0:
+        return Recommendation.NEGOTIATE
+    if overall_score >= 5.0:
+        return Recommendation.NEUTRAL
+    if overall_score >= 4.0:
+        return Recommendation.LEAN_PASS
+    return Recommendation.STRONG_PASS
 
 
 # ---------------------------------------------------------------------------
@@ -62,14 +85,19 @@ class Recommendation(str, Enum):
 
 
 class RepairEstimate(BaseModel):
-    """A single repair or maintenance item.
+    """A single repair or maintenance item, with full provenance for the interactive UI.
 
-    Used in two places with different sources:
-      - VisionAgentResult.repair_items     → estimate_source always "visual"
-      - HistoryAgentResult.repair_mentions → estimate_source always "listing_mention"
+    contributing_sources tracks every agent/signal that flagged this item.
+    The synthesiser merges duplicates across agents — a tire item flagged by both
+    Vision and History becomes one RepairEstimate with both sources listed.
 
-    Unified type so the Finance agent can aggregate across both without
-    branching on the source.
+    confidence drives the default checkbox state in the UI:
+      very_confident  → pre-checked  (multiple sources converge, or clear visual evidence)
+      confident       → pre-checked  (single explicit source, no contradicting signal)
+      not_confident   → unchecked    (history_inference only — deduced from absence of evidence)
+
+    inference_reasoning is shown to the user in the UI so they understand why we
+    flagged the item before deciding whether to include it in their cost calculations.
     """
 
     component: str = Field(
@@ -83,8 +111,20 @@ class RepairEstimate(BaseModel):
                     "e.g. 'dent', 'scratch', 'worn', 'overdue service'",
     )
     repair_category: RepairCategory
-    estimate_source: EstimateSource
+    contributing_sources: list[EstimateSource] = Field(
+        ...,
+        description="Which agents/signals detected this item. Multiple values mean "
+                    "more than one source independently flagged the same component.",
+    )
+    confidence: ConfidenceLevel
     severity: DamageSeverity
+    inference_reasoning: str = Field(
+        ...,
+        description="Plain-language explanation of why this item was flagged. "
+                    "e.g. 'Rear bumper scratch visible in image 2' or "
+                    "'Brake service last recorded at 62k miles; current odometer 118k — "
+                    "typical service interval is 50–70k miles'.",
+    )
     estimated_cost_low: int = Field(..., ge=0, description="Low end of repair estimate in USD")
     estimated_cost_high: int = Field(..., ge=0, description="High end of repair estimate in USD")
 
@@ -191,8 +231,9 @@ class VisionAgentResult(BaseModel):
          Text is a reaffirmer, not a driver — the photo-based assessment is never revised
          downward or upward based on what the seller claims.
 
-    All repair_items here have estimate_source == "visual".
+    All repair_items here have contributing_sources == ["visual"].
     Text-mentioned repairs live in HistoryAgentResult.repair_mentions.
+    The synthesiser merges overlapping items from both agents into FinalReport.all_repair_items.
     """
 
     condition_score: int = Field(
@@ -200,8 +241,8 @@ class VisionAgentResult(BaseModel):
     )
     repair_items: list[RepairEstimate] = Field(
         default_factory=list,
-        description="Cosmetic damage items detected from photos. "
-                    "Each item's estimate_source will be 'visual'.",
+        description="Damage items detected from photos. "
+                    "Each item's contributing_sources will be ['visual'].",
     )
     total_repair_estimate_low: int = Field(
         ..., ge=0, description="Sum of all low-end visual repair estimates in USD"
@@ -258,8 +299,9 @@ class HistoryAgentResult(BaseModel):
     )
     repair_mentions: list[RepairEstimate] = Field(
         default_factory=list,
-        description="Mechanical or maintenance repair items mentioned in the listing text. "
-                    "Each item's estimate_source will be 'listing_mention'. "
+        description="Repair items extracted from listing text (listing_mention) or inferred "
+                    "from service history gaps (history_inference). "
+                    "estimate_source is set by Python post-LLM, not by the model. "
                     "Used by the Finance agent for total cost of ownership.",
     )
     data_sources_available: list[str] = Field(
@@ -327,11 +369,21 @@ class FinanceAgentResult(BaseModel):
 
 
 class FinalReport(BaseModel):
-    """Synthesised output — the top-level result returned to the client."""
+    """Synthesised output — the top-level result returned to the client.
+
+    all_repair_items is the authoritative merged list for the interactive UI.
+    The synthesiser deduplicates overlapping items from Vision and History agents,
+    merging contributing_sources so the user sees one entry per component with all
+    evidence listed.
+
+    The recalculation_params block contains everything the frontend needs to
+    recompute finance_score, overall_score, and recommendation client-side when
+    the user toggles repair items. No server round-trip needed for interaction.
+    """
 
     recommendation: Recommendation
     overall_score: float = Field(
-        ..., ge=1.0, le=10.0, description="Simple average of the three agent scores"
+        ..., ge=1.0, le=10.0, description="Average of the three agent scores"
     )
     vision_score: int = Field(..., ge=1, le=10)
     history_score: int = Field(..., ge=1, le=10)
@@ -344,3 +396,21 @@ class FinalReport(BaseModel):
     summary: str = Field(
         ..., description="One-paragraph plain-language recommendation for the user"
     )
+
+    # Interactive repair list — synthesiser-merged, deduplicated across all agents.
+    # Each item carries contributing_sources, confidence, inference_reasoning, and cost range.
+    # The frontend renders these as toggleable checkboxes.
+    all_repair_items: list[RepairEstimate] = Field(
+        default_factory=list,
+        description="Deduplicated repair items from all agents. Use this list for the "
+                    "interactive UI — not the per-agent repair_items/repair_mentions.",
+    )
+
+    # Parameters embedded for client-side score recalculation.
+    # When the user toggles repair items, the frontend re-runs the finance score formula
+    # and updates finance_score, overall_score, and recommendation without a server call.
+    calc_asking_price: int = Field(..., description="Asking price in USD")
+    calc_mileage: int = Field(..., description="Odometer reading in miles")
+    calc_vehicle_age_years: int = Field(..., description="Vehicle age used in Finance agent scoring")
+    calc_estimated_market_value: int = Field(..., description="Finance agent market value estimate")
+    calc_range_band: float = Field(..., description="Depreciation category range band")
