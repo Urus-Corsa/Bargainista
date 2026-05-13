@@ -52,6 +52,12 @@ class ConfidenceLevel(str, Enum):
     very_confident = "very_confident"
 
 
+class PaintComplexity(str, Enum):
+    standard = "standard"                    # solid color or basic clear coat
+    metallic = "metallic"                    # standard metallic flake
+    pearl_or_tricoat = "pearl_or_tricoat"    # tri-coat, color-shifting, or premium special-order
+
+
 class Recommendation(str, Enum):
     GREAT_BUY = "GREAT_BUY"    # 9.0 – 10.0  exceptional deal
     STRONG_BUY = "STRONG_BUY"  # 8.0 – 8.99  strong deal, minor concerns only
@@ -158,6 +164,12 @@ class ListingInput(BaseModel):
     year: int | None = Field(None, ge=1900, le=2100)
     make: str | None = Field(None, min_length=1, max_length=64)
     model: str | None = Field(None, min_length=1, max_length=64)
+    trim: str | None = Field(
+        None,
+        max_length=64,
+        description="Trim level (e.g. 'EX', 'Sport', 'Limited'). "
+                    "Auto-populated from VIN decode if VIN is provided.",
+    )
     mileage: int = Field(..., ge=0, description="Odometer reading in miles")
     asking_price: int = Field(..., ge=0, description="Listed price in USD")
     location: str = Field(
@@ -256,6 +268,12 @@ class VisionAgentResult(BaseModel):
                     "e.g. 'Listing claims no prior accidents; photos show offset panel gaps "
                     "on driver door consistent with prior impact repair'. "
                     "Empty if listing text was not provided or no contradictions found.",
+    )
+    paint_complexity: PaintComplexity | None = Field(
+        None,
+        description="Paint type detected from photos. Used by Finance agent to adjust "
+                    "respray cost estimates upward for metallic or pearl/tri-coat finishes. "
+                    "None if photos are insufficient to determine paint type.",
     )
     confidence: ConfidenceLevel
     summary: str = Field(..., description="Plain-language condition summary for the synthesiser")

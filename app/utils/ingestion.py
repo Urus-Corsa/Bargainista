@@ -134,14 +134,16 @@ async def prepare_listing(listing: ListingInput) -> tuple[ListingInput, list[str
                 "year": vin_specs.get("year") or listing.year,
                 "make": vin_specs.get("make") or listing.make,
                 "model": vin_specs.get("model") or listing.model,
+                "trim": vin_specs.get("trim") or listing.trim,
             }
         )
         logger.info(
-            "VIN %s resolved to %s %s %s",
+            "VIN %s resolved to %s %s %s (trim: %s)",
             listing.vin,
             enriched.year,
             enriched.make,
             enriched.model,
+            enriched.trim or "not available",
         )
 
     if not images:
