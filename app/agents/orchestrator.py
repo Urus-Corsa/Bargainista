@@ -21,6 +21,7 @@ Entry point:
 from __future__ import annotations
 
 import logging
+from collections.abc import AsyncGenerator
 from typing import Annotated, Optional
 
 from langchain_core.runnables import RunnableConfig
@@ -195,6 +196,36 @@ _graph = _build_graph().compile()
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+
+
+async def stream_analysis(
+    listing: ListingInput,
+    images: list[str],
+    db: AsyncSession,
+) -> AsyncGenerator[tuple[str, dict], None]:
+    """Async generator that yields (node_name, node_update) as each node completes.
+
+    node_update is the dict returned by the node (pre-reducer). The caller inspects
+    node_name to decide what to persist and publish. finance_independent_node and
+    synthesizer_node are included — the caller decides whether to act on them.
+    """
+    initial_state: AnalysisState = {
+        "listing": listing,
+        "images": images,
+        "vision_result": None,
+        "history_result": None,
+        "finance_precomputed": None,
+        "finance_result": None,
+        "errors": {},
+        "final_report": None,
+    }
+    async for update in _graph.astream(
+        initial_state,
+        config={"configurable": {"db": db}},
+        stream_mode="updates",
+    ):
+        for node_name, node_update in update.items():
+            yield node_name, node_update
 
 
 async def run_analysis(

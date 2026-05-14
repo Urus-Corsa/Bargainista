@@ -83,6 +83,8 @@ class AnalysisRun(Base):
     )
     # Full ListingInput stored as JSONB — no schema migration needed as input fields evolve
     listing_input: Mapped[dict] = mapped_column(JSONB, nullable=False)
+    # Complete serialized FinalReport — written on completion, read for late-joining WS clients
+    full_result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     # Relationships
     agent_results: Mapped[list[AgentResult]] = relationship(
@@ -146,9 +148,9 @@ class FinalReport(Base):
         SAEnum(RecommendationEnum, name="recommendation_enum"), nullable=False
     )
     overall_score: Mapped[float] = mapped_column(Float, nullable=False)
-    vision_score: Mapped[int] = mapped_column(Integer, nullable=False)
-    history_score: Mapped[int] = mapped_column(Integer, nullable=False)
-    finance_score: Mapped[int] = mapped_column(Integer, nullable=False)
+    vision_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    history_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    finance_score: Mapped[int | None] = mapped_column(Integer, nullable=True)
     # list[str] stored as JSONB — simple and avoids a separate join table
     key_reasons: Mapped[list] = mapped_column(JSONB, nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)

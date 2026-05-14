@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.api.admin import router as admin_router
 from app.api.routes import router
+from app.api.websocket import router as ws_router
 from app.core.logging import configure_logging
 from app.db.init_db import init_db
 
@@ -28,3 +29,4 @@ app = FastAPI(title="Vehicle Analysis Platform", lifespan=lifespan)
 
 app.include_router(router)
 app.include_router(admin_router)
+app.include_router(ws_router)
