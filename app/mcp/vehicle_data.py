@@ -31,7 +31,7 @@ from typing import Any
 import httpx
 import redis.asyncio as aioredis
 from mcp.server import Server
-from mcp.server.streamable_http import StreamableHTTPServerTransport
+from mcp.server.streamable_http_manager import StreamableHTTPSessionManager
 from mcp.types import TextContent, Tool
 
 logger = logging.getLogger(__name__)
@@ -499,70 +499,60 @@ def create_server() -> Server:
 
     @server.call_tool()
     async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
-        redis = await _get_redis()
-
-        try:
-            if name == "get_vehicle_specs":
-                vin = arguments["vin"]
-                result = await _cached_get(
-                    "get_vehicle_specs",
-                    {"vin": vin},
-                    lambda: _fetch_vehicle_specs(vin),
-                    redis,
-                )
-
-            elif name == "get_vehicle_recalls":
-                make = arguments["make"]
-                model = arguments["model"]
-                year = int(arguments["year"])
-                result = await _cached_get(
-                    "get_vehicle_recalls",
-                    {"make": make, "model": model, "year": year},
-                    lambda: _fetch_vehicle_recalls(make, model, year),
-                    redis,
-                )
-
-            elif name == "get_safety_ratings":
-                make = arguments["make"]
-                model = arguments["model"]
-                year = int(arguments["year"])
-                result = await _cached_get(
-                    "get_safety_ratings",
-                    {"make": make, "model": model, "year": year},
-                    lambda: _fetch_safety_ratings(make, model, year),
-                    redis,
-                )
-
-            elif name == "get_repair_estimate":
-                make = arguments["make"]
-                model = arguments["model"]
-                year = int(arguments["year"])
-                repair_type = arguments["repair_type"]
-                zip_code = arguments.get("zip_code")
-                result = await _cached_get(
-                    "get_repair_estimate",
-                    {"make": make, "model": model, "year": year,
-                     "repair_type": repair_type, "zip_code": zip_code},
-                    lambda: _fetch_repair_estimate(make, model, year, repair_type, zip_code),
-                    redis,
-                )
-
-            else:
-                result = {"error": f"Unknown tool: {name}"}
-
-        except httpx.HTTPStatusError as exc:
-            logger.warning("NHTSA API error for tool %s: %s", name, exc)
-            result = {"error": f"NHTSA API returned {exc.response.status_code}"}
-        except Exception as exc:
-            logger.warning("Tool %s failed: %s", name, exc)
-            result = {"error": str(exc)}
-        finally:
-            if redis:
-                await redis.aclose()
-
+        result = await _dispatch_tool(name, arguments)
         return [TextContent(type="text", text=json.dumps(result))]
 
     return server
+
+
+async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> dict:
+    """Dispatch a tool call to the appropriate fetch function with Redis caching.
+
+    Used by both the MCP protocol handler (create_server) and the internal
+    REST endpoint in _serve(), so tool logic lives in exactly one place.
+    """
+    redis = await _get_redis()
+    try:
+        if name == "get_vehicle_specs":
+            vin = arguments["vin"]
+            return await _cached_get(
+                "get_vehicle_specs", {"vin": vin},
+                lambda: _fetch_vehicle_specs(vin), redis,
+            )
+        elif name == "get_vehicle_recalls":
+            make, model, year = arguments["make"], arguments["model"], int(arguments["year"])
+            return await _cached_get(
+                "get_vehicle_recalls", {"make": make, "model": model, "year": year},
+                lambda: _fetch_vehicle_recalls(make, model, year), redis,
+            )
+        elif name == "get_safety_ratings":
+            make, model, year = arguments["make"], arguments["model"], int(arguments["year"])
+            return await _cached_get(
+                "get_safety_ratings", {"make": make, "model": model, "year": year},
+                lambda: _fetch_safety_ratings(make, model, year), redis,
+            )
+        elif name == "get_repair_estimate":
+            make, model, year = arguments["make"], arguments["model"], int(arguments["year"])
+            repair_type = arguments["repair_type"]
+            zip_code = arguments.get("zip_code")
+            return await _cached_get(
+                "get_repair_estimate",
+                {"make": make, "model": model, "year": year,
+                 "repair_type": repair_type, "zip_code": zip_code},
+                lambda: _fetch_repair_estimate(make, model, year, repair_type, zip_code),
+                redis,
+            )
+        else:
+            return {"error": f"Unknown tool: {name}"}
+    except httpx.HTTPStatusError as exc:
+        logger.warning("NHTSA API error for tool %s: %s", name, exc)
+        return {"error": f"NHTSA API returned {exc.response.status_code}"}
+    except Exception as exc:
+        logger.warning("Tool %s failed: %s", name, exc)
+        return {"error": str(exc)}
+    finally:
+        if redis:
+            await redis.aclose()
 
 
 # ---------------------------------------------------------------------------
@@ -571,14 +561,48 @@ def create_server() -> Server:
 
 
 async def _serve() -> None:
+    from starlette.applications import Starlette
+    from starlette.requests import Request
+    from starlette.responses import JSONResponse
+    from starlette.routing import Mount, Route
+    import uvicorn
+
     host = os.getenv("MCP_HOST", "0.0.0.0")
     port = int(os.getenv("MCP_PORT", "8001"))
 
-    server = create_server()
-    transport = StreamableHTTPServerTransport(host=host, port=port)
+    mcp_server = create_server()
+    session_manager = StreamableHTTPSessionManager(app=mcp_server, stateless=True)
+
+    async def health_handler(request: Request) -> JSONResponse:
+        return JSONResponse({"status": "ok"})
+
+    async def tool_handler(request: Request) -> JSONResponse:
+        """Simple REST endpoint consumed by internal agents via app/mcp/client.py."""
+        tool_name = request.path_params["tool"]
+        try:
+            body = await request.json()
+        except Exception:
+            return JSONResponse({"error": "invalid request body"}, status_code=400)
+        result = await _dispatch_tool(tool_name, body.get("arguments", {}))
+        return JSONResponse({"content": [{"type": "text", "text": json.dumps(result)}]})
+
+    async def mcp_protocol_app(scope, receive, send) -> None:
+        """MCP protocol endpoint — connectable from Claude Desktop or any MCP client."""
+        await session_manager.handle_request(scope, receive, send)
+
+    app = Starlette(
+        routes=[
+            Route("/health", endpoint=health_handler),
+            Route("/mcp/v1/tools/{tool}", endpoint=tool_handler, methods=["POST"]),
+            Mount("/mcp", app=mcp_protocol_app),
+        ],
+        lifespan=lambda _: session_manager.run(),
+    )
 
     logger.info("MCP vehicle-data server starting on %s:%s", host, port)
-    await server.run(transport)
+    config = uvicorn.Config(app, host=host, port=port, log_level="info")
+    server = uvicorn.Server(config)
+    await server.serve()
 
 
 if __name__ == "__main__":

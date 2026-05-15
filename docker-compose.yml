@@ -21,7 +21,7 @@ services:
       redis:
         condition: service_healthy
       mcp:
-        condition: service_started
+        condition: service_healthy
     env_file:
       - path: .env
         required: false      # API keys live here; stack still starts without them
@@ -42,6 +42,12 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     env_file:
       - path: .env
         required: false
@@ -65,7 +71,7 @@ services:
       redis:
         condition: service_healthy
       mcp:
-        condition: service_started
+        condition: service_healthy
     env_file:
       - path: .env
         required: false

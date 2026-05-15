@@ -57,7 +57,9 @@ class AnalysisState(TypedDict):
 
     Inputs (set once at START, never modified):
         listing: Enriched ListingInput from the ingestion pipeline.
-        images:  Flat list of base64-encoded images from ingestion.normalise_images().
+
+    images are passed via RunnableConfig configurable["images"] rather than state,
+    so LangSmith does not capture the base64 payloads in node traces.
 
     Parallel phase results (None = not yet complete OR agent failed):
         Downstream nodes must handle None explicitly — None is meaningful, not missing.
@@ -67,7 +69,6 @@ class AnalysisState(TypedDict):
         own error without overwriting each other's entries.
     """
     listing: ListingInput
-    images: list[str]
 
     vision_result: Optional[VisionAgentResult]
     history_result: Optional[HistoryAgentResult]
@@ -85,9 +86,10 @@ class AnalysisState(TypedDict):
 # ---------------------------------------------------------------------------
 
 
-async def vision_node(state: AnalysisState) -> dict:
+async def vision_node(state: AnalysisState, config: RunnableConfig) -> dict:
+    images: list[str] = config["configurable"].get("images", [])
     try:
-        result = await vision.run(state["listing"], state["images"])
+        result = await vision.run(state["listing"], images)
         logger.info("vision_node: condition_score=%d", result.condition_score)
         return {"vision_result": result}
     except Exception as exc:
@@ -211,7 +213,6 @@ async def stream_analysis(
     """
     initial_state: AnalysisState = {
         "listing": listing,
-        "images": images,
         "vision_result": None,
         "history_result": None,
         "finance_precomputed": None,
@@ -221,7 +222,7 @@ async def stream_analysis(
     }
     async for update in _graph.astream(
         initial_state,
-        config={"configurable": {"db": db}},
+        config={"configurable": {"db": db, "images": images}},
         stream_mode="updates",
     ):
         for node_name, node_update in update.items():
@@ -250,7 +251,6 @@ async def run_analysis(
     """
     initial_state: AnalysisState = {
         "listing": listing,
-        "images": images,
         "vision_result": None,
         "history_result": None,
         "finance_precomputed": None,
@@ -261,7 +261,7 @@ async def run_analysis(
 
     final_state = await _graph.ainvoke(
         initial_state,
-        config={"configurable": {"db": db}},
+        config={"configurable": {"db": db, "images": images}},
     )
 
     if final_state.get("final_report") is None:

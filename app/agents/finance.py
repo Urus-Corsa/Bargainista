@@ -372,14 +372,16 @@ async def _generate_independent_narrative(computed: dict) -> tuple[str, str]:
     )
     response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=400,
+        max_tokens=800,
         tools=[_INDEPENDENT_NARRATIVE_TOOL],  # type: ignore[list-item]
         tool_choice={"type": "tool", "name": "finance_independent_narrative"},
         messages=[{"role": "user", "content": user_message}],
     )
     for block in response.content:
         if block.type == "tool_use" and block.name == "finance_independent_narrative":
-            return block.input["depreciation_summary"], block.input["financing_vs_cash_analysis"]
+            dep = block.input.get("depreciation_summary", "Depreciation analysis unavailable.")
+            fin = block.input.get("financing_vs_cash_analysis", "Financing analysis unavailable.")
+            return dep, fin
     raise RuntimeError("Finance independent LLM did not return expected tool_use block")
 
 
@@ -397,14 +399,14 @@ async def _generate_summary(computed: dict) -> str:
     )
     response = await client.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=200,
+        max_tokens=400,
         tools=[_SUMMARY_TOOL],  # type: ignore[list-item]
         tool_choice={"type": "tool", "name": "finance_summary"},
         messages=[{"role": "user", "content": user_message}],
     )
     for block in response.content:
         if block.type == "tool_use" and block.name == "finance_summary":
-            return block.input["summary"]
+            return block.input.get("summary", "Finance summary unavailable.")
     raise RuntimeError("Finance summary LLM did not return expected tool_use block")
 
 

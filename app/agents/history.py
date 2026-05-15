@@ -418,7 +418,7 @@ async def run(listing: ListingInput) -> HistoryAgentResult:
         anthropic.APIError: if the LLM call fails.
         RuntimeError: if the LLM does not return the expected tool_use block.
     """
-    make = (listing.make or "").lower()
+    make = (listing.make or "").strip()
     model_name = listing.model or ""
     year = listing.year
 

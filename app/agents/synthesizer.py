@@ -212,7 +212,7 @@ async def _generate_narrative(
 
     response = await client.messages.create(
         model="claude-sonnet-4-6",
-        max_tokens=600,
+        max_tokens=1000,
         system=(
             "You are a vehicle purchase analyst writing a report for a private buyer. "
             "Be direct, specific, and buyer-focused. Avoid hedging language like 'it depends' "
@@ -232,7 +232,9 @@ async def _generate_narrative(
 
     for block in response.content:
         if block.type == "tool_use" and block.name == "final_report_narrative":
-            return block.input["key_reasons"], block.input["summary"]
+            reasons = block.input.get("key_reasons", ["Analysis complete."])
+            summary = block.input.get("summary", "Summary unavailable.")
+            return reasons, summary
 
     raise RuntimeError("Synthesizer LLM did not return expected tool_use block")
 

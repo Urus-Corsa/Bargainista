@@ -13,13 +13,39 @@ from __future__ import annotations
 
 import asyncio
 import base64
+import io
 import logging
 
 import httpx
+from PIL import Image
 
 from app.models.schemas import ListingInput
 
 logger = logging.getLogger(__name__)
+
+# Anthropic's many-image API rejects images where any dimension exceeds 2000px.
+# 1568px is the safe ceiling (well below the limit, matches Claude's recommended size).
+_MAX_IMAGE_DIM = 1568
+
+
+def _resize_if_needed(b64: str) -> str:
+    """Shrink a base64 image so neither dimension exceeds _MAX_IMAGE_DIM.
+
+    Re-encodes as JPEG at quality=85 when resizing is needed. Images already
+    within the limit are returned unchanged to avoid unnecessary re-encoding.
+    """
+    raw = base64.b64decode(b64)
+    img = Image.open(io.BytesIO(raw))
+    w, h = img.size
+    if w <= _MAX_IMAGE_DIM and h <= _MAX_IMAGE_DIM:
+        return b64
+    scale = _MAX_IMAGE_DIM / max(w, h)
+    img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.convert("RGB").save(buf, format="JPEG", quality=85)
+    resized = base64.b64encode(buf.getvalue()).decode("utf-8")
+    logger.debug("Resized image from %dx%d to %dx%d", w, h, int(w * scale), int(h * scale))
+    return resized
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +90,8 @@ async def normalise_images(listing: ListingInput) -> list[str]:
                 len(listing.image_urls),
             )
 
-    return fetched + list(listing.image_base64)
+    all_images = fetched + list(listing.image_base64)
+    return [_resize_if_needed(img) for img in all_images]
 
 
 # ---------------------------------------------------------------------------
