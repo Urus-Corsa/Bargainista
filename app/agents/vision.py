@@ -24,8 +24,10 @@ from __future__ import annotations
 import logging
 
 import anthropic
+from langsmith import tracing_context
 
 from app.core.config import settings
+from app.core.llm import get_anthropic_client
 from app.models.schemas import (
     ConfidenceLevel,
     DamageSeverity,
@@ -497,16 +499,19 @@ async def run(listing: ListingInput, images: list[str]) -> VisionAgentResult:
     )
 
     messages = _build_messages(listing, images)
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = get_anthropic_client()
 
-    response = await client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=3_000,
-        system=_SYSTEM_PROMPT,
-        tools=[_VISION_TOOL],  # type: ignore[list-item]
-        tool_choice={"type": "tool", "name": "assess_vehicle_condition"},
-        messages=messages,
-    )
+    # Hide inputs from LangSmith — the message payload contains base64 image bytes
+    # that exceed LangSmith's 25MB per-field limit. Outputs (token counts, content) still traced.
+    with tracing_context(hide_inputs=True):
+        response = await client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=3_000,
+            system=_SYSTEM_PROMPT,
+            tools=[_VISION_TOOL],  # type: ignore[list-item]
+            tool_choice={"type": "tool", "name": "assess_vehicle_condition"},
+            messages=messages,
+        )
 
     raw: dict | None = None
     for block in response.content:

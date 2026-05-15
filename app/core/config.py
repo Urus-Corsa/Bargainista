@@ -19,9 +19,8 @@ class Settings(BaseSettings):
     # MCP server — http://mcp:8001 inside Docker, http://localhost:8001 outside
     mcp_server_url: str = "http://localhost:8001"
 
-    # AI API keys — empty by default; required from Phase 3 onward
+    # AI API key — empty by default; required from Phase 3 onward
     anthropic_api_key: str = ""
-    openai_api_key: str = ""
 
     # Admin API key — protects depreciation config CRUD endpoints
     # Set a strong random value in .env; empty string disables admin endpoints

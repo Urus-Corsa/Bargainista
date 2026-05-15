@@ -133,7 +133,7 @@ async def ws_analyze(websocket: WebSocket, run_id: str) -> None:
                 continue
             data = json.loads(message["data"])
             await websocket.send_json(data)
-            if data.get("event") in ("complete", "failed"):
+            if data.get("event") in ("complete", "failed", "cancelled"):
                 break
 
     except WebSocketDisconnect:

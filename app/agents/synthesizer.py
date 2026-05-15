@@ -18,6 +18,7 @@ import logging
 import anthropic
 
 from app.core.config import settings
+from app.core.llm import get_anthropic_client
 from app.models.schemas import (
     ConfidenceLevel,
     EstimateSource,
@@ -147,7 +148,7 @@ async def _generate_narrative(
     The recommendation and score are Python-computed; the LLM only writes prose.
     Returns (key_reasons, summary).
     """
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = get_anthropic_client()
 
     failed_agents = list(errors.keys())
     repair_lines = "\n".join(

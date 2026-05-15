@@ -1,7 +1,9 @@
 services:
 
   api:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     volumes:
       - ./app:/app/app       # live code mount — uvicorn --reload picks up changes instantly
@@ -25,7 +27,9 @@ services:
         required: false      # API keys live here; stack still starts without them
 
   mcp:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.api
     command: python -m app.mcp.vehicle_data
     volumes:
       - ./app:/app/app
@@ -43,7 +47,9 @@ services:
         required: false
 
   worker:
-    build: .
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
     command: celery -A app.workers.celery_app worker --loglevel=info
     volumes:
       - ./app:/app/app

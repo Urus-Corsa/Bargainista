@@ -27,6 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
+from app.core.llm import get_anthropic_client
 from app.models.db_models import BrandModifier, DepreciationCategory, VariantOverride
 from app.models.schemas import (
     FinanceAgentResult,
@@ -363,7 +364,7 @@ async def _generate_independent_narrative(computed: dict) -> tuple[str, str]:
     Runs in finance_independent_node — before Vision and History results are known.
     Returns (depreciation_summary, financing_vs_cash_analysis).
     """
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = get_anthropic_client()
     lines = "\n".join(f"{k}: {v}" for k, v in computed.items())
     user_message = (
         "You are a vehicle finance analyst writing a report for a used-car buyer. "
@@ -388,7 +389,7 @@ async def _generate_summary(computed: dict) -> str:
     Runs in finance_dependent_node — after repair costs are aggregated.
     Returns the summary string.
     """
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = get_anthropic_client()
     lines = "\n".join(f"{k}: {v}" for k, v in computed.items())
     user_message = (
         "You are a vehicle finance analyst writing a report for a used-car buyer. "

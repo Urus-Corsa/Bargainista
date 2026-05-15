@@ -22,6 +22,7 @@ import logging
 import anthropic
 
 from app.core.config import settings
+from app.core.llm import get_anthropic_client
 from app.mcp.client import call_tool
 from app.models.schemas import (
     ConfidenceLevel,
@@ -461,7 +462,7 @@ async def run(listing: ListingInput) -> HistoryAgentResult:
     # ------------------------------------------------------------------
     # 3. LLM call — Sonnet, tool_use forced (Decision 15, Decision 13)
     # ------------------------------------------------------------------
-    client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
+    client = get_anthropic_client()
 
     response = await client.messages.create(
         model="claude-sonnet-4-6",

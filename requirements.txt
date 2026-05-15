@@ -20,7 +20,7 @@ redis>=5.2.0
 langchain>=0.3.0
 langgraph>=0.2.0
 anthropic>=0.43.0
-openai>=1.59.0
+langsmith>=0.2.0
 
 # MCP (Model Context Protocol) — server and client
 mcp>=1.27.0
