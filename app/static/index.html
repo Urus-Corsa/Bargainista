@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bargainista — Vehicle Analysis</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .inp { width:100%; border:1px solid #cbd5e1; border-radius:.5rem; padding:.6rem .75rem; font-size:.875rem; outline:none; background:#fff; }
+    .inp:focus { box-shadow:0 0 0 2px #3b82f6; border-color:transparent; }
+    .lbl { display:block; font-size:.875rem; font-weight:500; color:#374151; margin-bottom:.375rem; }
+    .spin { animation: spin 1s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="bg-slate-50 min-h-screen">
+
+<!-- Header -->
+<nav class="bg-white border-b border-slate-200 px-6 py-4 flex items-center gap-2">
+  <span class="text-blue-600 font-black text-xl">B</span>
+  <span class="font-bold text-slate-900">Bargainista</span>
+  <span class="text-slate-300 mx-1">|</span>
+  <span class="text-slate-500 text-sm">AI Vehicle Analysis</span>
+</nav>
+
+<!-- ═══════════════════════ STATE 1: FORM ═══════════════════════ -->
+<section id="s-form" class="max-w-xl mx-auto px-4 py-12">
+  <h1 class="text-2xl font-bold text-slate-900 mb-1">Analyze a vehicle listing</h1>
+  <p class="text-slate-500 text-sm mb-8">AI-powered buy / negotiate / pass recommendation from three independent agents.</p>
+
+  <div class="flex border-b border-slate-200 mb-6">
+    <button onclick="setTab('url')" id="tb-url" class="px-4 py-2.5 text-sm font-medium text-blue-600 border-b-2 border-blue-600 -mb-px">By URL</button>
+    <button onclick="setTab('vin')" id="tb-vin" class="px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent -mb-px hover:text-slate-700">By VIN</button>
+    <button onclick="setTab('manual')" id="tb-manual" class="px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent -mb-px hover:text-slate-700">Manual</button>
+  </div>
+
+  <div id="tp-url" class="mb-5">
+    <label class="lbl">Listing URL <span class="text-slate-400 font-normal">(provenance only)</span></label>
+    <input id="listing_url" type="url" placeholder="https://craigslist.org/..." class="inp" />
+  </div>
+  <div id="tp-vin" class="mb-5 hidden">
+    <label class="lbl">VIN <span class="text-slate-400 font-normal">(17 chars — year/make/model auto-filled by NHTSA)</span></label>
+    <input id="vin" type="text" maxlength="17" placeholder="1HGCM82633A004352" class="inp" style="font-family:monospace" />
+  </div>
+  <div id="tp-manual" class="mb-5 hidden">
+    <div class="grid grid-cols-3 gap-3">
+      <div><label class="lbl">Year *</label><input id="year" type="number" placeholder="2019" min="1980" max="2026" class="inp" /></div>
+      <div><label class="lbl">Make *</label><input id="make" type="text" placeholder="Toyota" class="inp" /></div>
+      <div><label class="lbl">Model *</label><input id="model" type="text" placeholder="Camry" class="inp" /></div>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-2 gap-4 mb-4">
+    <div><label class="lbl">Mileage *</label><input id="mileage" type="number" placeholder="87000" min="0" class="inp" /></div>
+    <div>
+      <label class="lbl">Asking Price *</label>
+      <div class="relative"><span class="absolute left-3 top-2.5 text-slate-400 text-sm pointer-events-none">$</span>
+        <input id="asking_price" type="number" placeholder="14500" min="0" class="inp" style="padding-left:1.5rem" />
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-4"><label class="lbl">Location *</label><input id="location" type="text" placeholder="Seattle, WA" class="inp" /></div>
+
+  <div class="mb-4">
+    <label class="lbl">Photos <span class="text-slate-400 font-normal">(required unless you add damage notes)</span></label>
+    <label class="flex items-center gap-3 border-2 border-dashed border-slate-200 rounded-lg px-4 py-3.5 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
+      <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+      </svg>
+      <span id="photo-label" class="text-sm text-slate-500">Upload photos...</span>
+      <input id="photo-input" type="file" multiple accept="image/*" class="hidden" onchange="handlePhotos(this)" />
+    </label>
+  </div>
+
+  <button onclick="toggleOpt()" class="flex items-center gap-1.5 text-sm text-slate-400 hover:text-slate-600 mb-3 transition-colors">
+    <svg id="opt-chevron" class="w-3.5 h-3.5 transition-transform duration-150" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/>
+    </svg>
+    Optional details
+  </button>
+  <div id="opt-section" class="hidden space-y-4 mb-5">
+    <div><label class="lbl">Listing Description</label><textarea id="listing_description" rows="3" placeholder="Paste the seller's listing text..." class="inp resize-none"></textarea></div>
+    <div><label class="lbl">History Report Text</label><textarea id="history_report_text" rows="3" placeholder="Paste CarFax / AutoCheck content..." class="inp resize-none"></textarea></div>
+    <div><label class="lbl">Damage Notes <span class="text-slate-400 font-normal">(satisfies photo requirement)</span></label><textarea id="user_damage_notes" rows="2" placeholder="Describe any visible damage if you can't upload photos..." class="inp resize-none"></textarea></div>
+    <div><label class="lbl">Image URLs <span class="text-slate-400 font-normal">(one per line)</span></label><textarea id="image_urls_text" rows="3" placeholder="https://images.craigslist.org/..." class="inp resize-none" style="font-family:monospace;font-size:.75rem"></textarea></div>
+  </div>
+
+  <p id="form-error" class="text-red-600 text-sm mb-3 hidden"></p>
+
+  <button id="submit-btn" onclick="submitListing()"
+    class="w-full bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white font-semibold py-3 rounded-lg text-sm transition-colors flex items-center justify-center gap-2">
+    <span id="submit-label">Analyze Listing</span>
+    <svg id="submit-spin" class="hidden w-4 h-4 spin" fill="none" viewBox="0 0 24 24">
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+      <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+    </svg>
+  </button>
+</section>
+
+<!-- ═══════════════════════ STATE 2: ANALYZING ═══════════════════════ -->
+<section id="s-analyzing" class="hidden max-w-4xl mx-auto px-4 py-10">
+  <div class="flex gap-6">
+    <!-- Left: listing summary + controls -->
+    <div class="w-60 flex-shrink-0 space-y-4">
+      <div class="bg-white rounded-xl border border-slate-200 p-4">
+        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Submitted</p>
+        <p id="s2-vehicle" class="font-semibold text-slate-900 text-sm leading-snug mb-1">—</p>
+        <p id="s2-details" class="text-slate-500 text-xs leading-relaxed">—</p>
+      </div>
+      <button onclick="cancelAnalysis()" class="w-full border border-red-200 text-red-500 hover:bg-red-50 py-2 rounded-lg text-sm font-medium transition-colors">Cancel</button>
+      <button id="btn-report" onclick="showReport()" disabled
+        class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-semibold opacity-40 cursor-not-allowed transition-all">
+        View Full Report
+      </button>
+    </div>
+
+    <!-- Right: agent cards -->
+    <div class="flex-1 space-y-3">
+      <p class="text-sm text-slate-400 mb-1">Analysis in progress — click an agent card once it completes to see its findings.</p>
+
+      <div id="card-vision" class="bg-white rounded-xl border border-slate-200 p-5 transition-colors">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-xl flex-shrink-0">👁</div>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-slate-800 text-sm">Vision</p>
+            <p id="cv-status" class="text-slate-400 text-xs mt-0.5 truncate">Analyzing photos...</p>
+          </div>
+          <div id="cv-score" class="hidden text-right mr-2">
+            <p id="cv-score-val" class="font-bold text-slate-900 text-lg">—</p>
+            <p class="text-xs text-slate-400">/10</p>
+          </div>
+          <svg id="cv-spin" class="w-5 h-5 text-blue-400 spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div id="card-history" class="bg-white rounded-xl border border-slate-200 p-5 transition-colors">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-xl flex-shrink-0">📋</div>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-slate-800 text-sm">History</p>
+            <p id="ch-status" class="text-slate-400 text-xs mt-0.5 truncate">Analyzing records...</p>
+          </div>
+          <div id="ch-score" class="hidden text-right mr-2">
+            <p id="ch-score-val" class="font-bold text-slate-900 text-lg">—</p>
+            <p class="text-xs text-slate-400">/10</p>
+          </div>
+          <svg id="ch-spin" class="w-5 h-5 text-blue-400 spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div id="card-finance" class="bg-white rounded-xl border border-slate-200 p-5 transition-colors">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center text-xl flex-shrink-0">💰</div>
+          <div class="flex-1 min-w-0">
+            <p class="font-semibold text-slate-800 text-sm">Finance</p>
+            <p id="cf-status" class="text-slate-400 text-xs mt-0.5 truncate">Computing value...</p>
+          </div>
+          <div id="cf-score" class="hidden text-right mr-2">
+            <p id="cf-score-val" class="font-bold text-slate-900 text-lg">—</p>
+            <p class="text-xs text-slate-400">/10</p>
+          </div>
+          <svg id="cf-spin" class="w-5 h-5 text-blue-400 spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
+          </svg>
+        </div>
+      </div>
+
+      <div id="s2-error" class="hidden bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg p-3"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ STATE 3: REPORT ═══════════════════════ -->
+<section id="s-report" class="hidden max-w-2xl mx-auto px-4 py-10">
+  <button onclick="showState('analyzing')" class="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700 mb-8 transition-colors">
+    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+    Back to agents
+  </button>
+
+  <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+    <div class="flex items-start justify-between gap-4 mb-5">
+      <div>
+        <span id="rec-badge" class="inline-flex px-4 py-1.5 rounded-full text-sm font-bold tracking-wider"></span>
+        <p class="text-slate-400 text-xs mt-2">Overall recommendation</p>
+      </div>
+      <div class="text-right">
+        <p id="overall-score" class="text-5xl font-extrabold text-slate-900 tabular-nums leading-none">—</p>
+        <p class="text-slate-400 text-xs mt-1">/ 10</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-3 divide-x divide-slate-100 border-t border-slate-100 pt-4">
+      <div class="text-center px-2"><p class="text-xs text-slate-400 mb-1">👁 Vision</p><p id="r-vision" class="text-xl font-bold text-slate-800">—</p></div>
+      <div class="text-center px-2"><p class="text-xs text-slate-400 mb-1">📋 History</p><p id="r-history" class="text-xl font-bold text-slate-800">—</p></div>
+      <div class="text-center px-2"><p class="text-xs text-slate-400 mb-1">💰 Finance</p><p id="r-finance" class="text-xl font-bold text-slate-800">—</p></div>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Why this rating</h2>
+    <ul id="r-reasons" class="space-y-2"></ul>
+  </div>
+
+  <div class="bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+    <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Summary</h2>
+    <p id="r-summary" class="text-slate-700 text-sm leading-relaxed"></p>
+  </div>
+
+  <div id="r-repair-section" class="hidden bg-white rounded-2xl border border-slate-200 p-6 mb-5">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Repair Items</h2>
+      <span id="r-repair-total" class="text-sm text-slate-500 font-medium"></span>
+    </div>
+    <div id="r-repair-list" class="space-y-3 divide-y divide-slate-50"></div>
+  </div>
+
+  <div id="r-adj-panel" class="hidden bg-blue-50 border border-blue-100 rounded-2xl p-5 mb-5">
+    <h2 class="text-xs font-semibold text-blue-600 uppercase tracking-wider mb-4">Adjusted estimate (selected repairs)</h2>
+    <div class="space-y-2 text-sm">
+      <div class="flex justify-between"><span class="text-blue-700">Selected repair cost</span><span id="adj-repairs" class="font-semibold text-blue-900"></span></div>
+      <div class="flex justify-between"><span class="text-blue-700">Effective all-in price</span><span id="adj-effective" class="font-semibold text-blue-900"></span></div>
+      <div class="flex justify-between border-t border-blue-100 pt-2 mt-1"><span class="text-blue-700">Finance score</span><span id="adj-finance" class="font-semibold text-blue-900"></span></div>
+      <div class="flex justify-between"><span class="text-blue-700">Overall score</span><span id="adj-overall" class="font-bold text-blue-900"></span></div>
+      <div class="flex justify-between"><span class="text-blue-700">Recommendation</span><span id="adj-rec" class="font-bold text-blue-900"></span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════ MODAL ═══════════════════════ -->
+<div id="modal" onclick="closeModal(event)" class="fixed inset-0 bg-black/50 hidden z-50 flex items-center justify-center p-4">
+  <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full max-h-[80vh] flex flex-col" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-slate-100 flex-shrink-0">
+      <h2 id="modal-title" class="font-semibold text-slate-900"></h2>
+      <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 transition-colors p-1">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+      </button>
+    </div>
+    <div id="modal-body" class="px-6 py-5 text-sm text-slate-700 overflow-y-auto"></div>
+  </div>
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let activeTab = 'url', images = [], currentRunId = null, ws = null;
+let agentResults = {}, finalReport = null;
+
+// ── Tabs ───────────────────────────────────────────────────────────────────
+function setTab(t) {
+  activeTab = t;
+  ['url','vin','manual'].forEach(n => {
+    document.getElementById('tp-'+n).classList.toggle('hidden', n !== t);
+    const b = document.getElementById('tb-'+n);
+    b.className = n === t
+      ? 'px-4 py-2.5 text-sm font-medium text-blue-600 border-b-2 border-blue-600 -mb-px'
+      : 'px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent -mb-px hover:text-slate-700';
+  });
+}
+
+function toggleOpt() {
+  const el = document.getElementById('opt-section');
+  el.classList.toggle('hidden');
+  document.getElementById('opt-chevron').style.transform = el.classList.contains('hidden') ? '' : 'rotate(90deg)';
+}
+
+// ── Photo upload ───────────────────────────────────────────────────────────
+function handlePhotos(input) {
+  images = [];
+  const files = Array.from(input.files);
+  if (!files.length) return;
+  let done = 0;
+  files.forEach(f => {
+    const r = new FileReader();
+    r.onload = e => {
+      images.push(e.target.result.split(',')[1]);
+      if (++done === files.length)
+        document.getElementById('photo-label').textContent = done + ' photo' + (done > 1 ? 's' : '') + ' selected';
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+// ── Form submit ────────────────────────────────────────────────────────────
+function fv(id) { return document.getElementById(id).value.trim(); }
+function showErr(m) { const e = document.getElementById('form-error'); e.textContent = m; e.classList.remove('hidden'); }
+function clearErr() { document.getElementById('form-error').classList.add('hidden'); }
+
+async function submitListing() {
+  clearErr();
+  if (!fv('mileage') || !fv('asking_price') || !fv('location'))
+    return showErr('Mileage, asking price, and location are required.');
+  if (activeTab === 'vin' && !fv('vin'))
+    return showErr('VIN is required.');
+  if (activeTab === 'manual' && !(fv('year') && fv('make') && fv('model')))
+    return showErr('Year, make, and model are required for manual entry.');
+  if (!images.length && !fv('user_damage_notes'))
+    return showErr('Upload at least one photo, or describe damage in the notes field.');
+
+  const imageUrls = fv('image_urls_text').split('\n').map(s => s.trim()).filter(Boolean);
+  const body = {
+    input_method: activeTab,
+    mileage: +fv('mileage'), asking_price: +fv('asking_price'), location: fv('location'),
+    ...(fv('listing_url') && { listing_url: fv('listing_url') }),
+    ...(fv('vin') && { vin: fv('vin') }),
+    ...(fv('year') && { year: +fv('year') }),
+    ...(fv('make') && { make: fv('make') }),
+    ...(fv('model') && { model: fv('model') }),
+    ...(fv('listing_description') && { listing_description: fv('listing_description') }),
+    ...(fv('history_report_text') && { history_report_text: fv('history_report_text') }),
+    ...(fv('user_damage_notes') && { user_damage_notes: fv('user_damage_notes') }),
+    ...(imageUrls.length && { image_urls: imageUrls }),
+    ...(images.length && { image_base64: images }),
+  };
+
+  document.getElementById('submit-btn').disabled = true;
+  document.getElementById('submit-label').textContent = 'Submitting…';
+  document.getElementById('submit-spin').classList.remove('hidden');
+
+  try {
+    const res = await fetch('/api/analyze', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    if (res.status === 202) {
+      const { run_id } = await res.json();
+      currentRunId = run_id;
+      startAnalysis(body);
+    } else {
+      const j = await res.json();
+      showErr(j.detail?.[0]?.msg || j.detail || 'Submission failed.');
+    }
+  } catch { showErr('Network error — is the server running?'); }
+  finally {
+    document.getElementById('submit-btn').disabled = false;
+    document.getElementById('submit-label').textContent = 'Analyze Listing';
+    document.getElementById('submit-spin').classList.add('hidden');
+  }
+}
+
+// ── State transitions ──────────────────────────────────────────────────────
+function showState(n) {
+  ['form','analyzing','report'].forEach(s =>
+    document.getElementById('s-'+s).classList.toggle('hidden', s !== n)
+  );
+}
+
+function startAnalysis(payload) {
+  agentResults = {}; finalReport = null;
+  ['vision','history','finance'].forEach(resetCard);
+  document.getElementById('s2-error').classList.add('hidden');
+  const vehicle = [payload.year, payload.make, payload.model].filter(Boolean).join(' ') || payload.vin || 'Vehicle';
+  document.getElementById('s2-vehicle').textContent = vehicle;
+  document.getElementById('s2-details').textContent =
+    (+payload.mileage).toLocaleString() + ' mi · $' + (+payload.asking_price).toLocaleString() + ' · ' + payload.location;
+  const btn = document.getElementById('btn-report');
+  btn.disabled = true; btn.classList.add('opacity-40','cursor-not-allowed');
+  showState('analyzing');
+  openWS();
+}
+
+// ── WebSocket ──────────────────────────────────────────────────────────────
+function openWS() {
+  const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+  ws = new WebSocket(proto + '://' + location.host + '/ws/analyze/' + currentRunId);
+  ws.onmessage = e => onMsg(JSON.parse(e.data));
+  ws.onerror = () => showS2Error('WebSocket connection error. Analysis may still be running.');
+}
+
+function onMsg({ event, payload }) {
+  if (event === 'agent_complete') { agentResults[payload.agent] = payload.result; markDone(payload.agent, payload.result); }
+  else if (event === 'agent_failed') markFailed(payload.agent, payload.error);
+  else if (event === 'complete') { finalReport = payload.report; unlockReport(); }
+  else if (event === 'failed') showS2Error('Analysis failed: ' + (payload.error || 'unknown error'));
+  else if (event === 'cancelled') { ws && ws.close(); ws = null; resetToForm(); }
+}
+
+// ── Agent cards ────────────────────────────────────────────────────────────
+const CARD = { vision: 'cv', history: 'ch', finance: 'cf' };
+
+function resetCard(a) {
+  const p = CARD[a];
+  document.getElementById('card-'+a).className = 'bg-white rounded-xl border border-slate-200 p-5 transition-colors';
+  document.getElementById('card-'+a).onclick = null;
+  document.getElementById(p+'-status').textContent = a === 'vision' ? 'Analyzing photos...' : a === 'history' ? 'Analyzing records...' : 'Computing value...';
+  document.getElementById(p+'-score').classList.add('hidden');
+  document.getElementById(p+'-spin').classList.remove('hidden');
+}
+
+function markDone(a, r) {
+  const p = CARD[a];
+  const score = a === 'vision' ? r.condition_score : a === 'history' ? r.risk_score : r.finance_score;
+  document.getElementById(p+'-spin').classList.add('hidden');
+  document.getElementById(p+'-score').classList.remove('hidden');
+  document.getElementById(p+'-score-val').textContent = score ?? '—';
+  document.getElementById(p+'-status').textContent = (r.summary || 'Complete').slice(0, 90) + ((r.summary||'').length > 90 ? '…' : '');
+  const card = document.getElementById('card-'+a);
+  card.className = 'bg-white rounded-xl border-2 border-green-300 p-5 cursor-pointer hover:bg-green-50 transition-colors';
+  card.onclick = () => openModal(a);
+}
+
+function markFailed(a, error) {
+  const p = CARD[a];
+  document.getElementById(p+'-spin').classList.add('hidden');
+  document.getElementById(p+'-status').textContent = 'Analysis failed' + (error ? ': ' + error.slice(0,60) : '');
+  document.getElementById('card-'+a).className = 'bg-white rounded-xl border border-red-200 p-5 transition-colors';
+}
+
+function unlockReport() {
+  const b = document.getElementById('btn-report');
+  b.disabled = false; b.classList.remove('opacity-40','cursor-not-allowed');
+}
+
+function showS2Error(msg) {
+  const el = document.getElementById('s2-error');
+  el.textContent = msg; el.classList.remove('hidden');
+}
+
+// ── Modal (agent detail) ───────────────────────────────────────────────────
+const AGENT_LABELS = { vision: '👁 Vision', history: '📋 History', finance: '💰 Finance' };
+
+function openModal(agent) {
+  const r = agentResults[agent];
+  if (!r) return;
+  document.getElementById('modal-title').textContent = AGENT_LABELS[agent] + ' — Findings';
+  document.getElementById('modal-body').innerHTML = renderAgent(agent, r);
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('modal'))
+    document.getElementById('modal').classList.add('hidden');
+}
+
+function confClr(c) { return c === 'very_confident' ? 'text-emerald-600' : c === 'confident' ? 'text-blue-500' : 'text-slate-400'; }
+
+function renderAgent(agent, r) {
+  const scoreHtml = s => s != null
+    ? '<span class="text-3xl font-extrabold text-slate-900">' + s + '</span><span class="text-slate-400 text-sm"> / 10</span>'
+    : '<span class="text-slate-400">—</span>';
+
+  if (agent === 'vision') return `
+    <div class="flex items-center justify-between mb-4">
+      <div>${scoreHtml(r.condition_score)}</div>
+      <div class="text-right text-xs text-slate-400">${(r.paint_complexity||'').replace(/_/g,' ')}<br>${r.confidence||''}</div>
+    </div>
+    ${r.repair_items && r.repair_items.length ? `
+      <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Repair items</p>
+      <div class="divide-y divide-slate-50 mb-4">${r.repair_items.map(i => `
+        <div class="flex justify-between py-2.5">
+          <div><span class="font-medium text-slate-800">${i.component}</span> <span class="text-slate-400">${i.damage_type}</span></div>
+          <div class="text-right text-xs ml-4 flex-shrink-0"><div class="font-medium text-slate-700">$${i.estimated_cost_low.toLocaleString()}–$${i.estimated_cost_high.toLocaleString()}</div><div class="${confClr(i.confidence)}">● ${i.confidence.replace(/_/g,' ')}</div></div>
+        </div>`).join('')}</div>` : ''}
+    ${r.text_contradictions && r.text_contradictions.length ? `
+      <div class="bg-amber-50 border border-amber-100 rounded-lg p-3 mb-4">
+        <p class="text-xs font-semibold text-amber-700 mb-1">Text contradictions (${r.text_contradictions.length})</p>
+        ${r.text_contradictions.map(c => `<p class="text-xs text-amber-800">• ${c}</p>`).join('')}
+      </div>` : ''}
+    <p class="text-slate-700 leading-relaxed">${r.summary||''}</p>`;
+
+  if (agent === 'history') return `
+    <div class="flex items-center justify-between mb-3">
+      <div>${scoreHtml(r.risk_score)}</div>
+      <span class="text-xs font-semibold px-2 py-1 rounded ${r.mileage_consistent ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600'}">${r.mileage_consistent ? '✓ Mileage consistent' : '⚠ Mileage concern'}</span>
+    </div>
+    ${(r.data_sources_available||[]).length ? `<div class="flex flex-wrap gap-1 mb-4">${r.data_sources_available.map(s => `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-xs">${s}</span>`).join('')}</div>` : ''}
+    ${r.red_flags && r.red_flags.length ? `<div class="bg-red-50 border border-red-100 rounded-lg p-3 mb-4"><p class="text-xs font-semibold text-red-700 mb-1">Red flags</p>${r.red_flags.map(f => `<p class="text-xs text-red-800">• ${f}</p>`).join('')}</div>` : ''}
+    ${r.repair_mentions && r.repair_mentions.length ? `<p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Mentioned repairs</p><div class="divide-y divide-slate-50 mb-4">${r.repair_mentions.map(i => `<div class="flex justify-between py-2 text-sm"><span class="text-slate-700">${i.component}</span><span class="text-slate-500">$${i.estimated_cost_low.toLocaleString()}–$${i.estimated_cost_high.toLocaleString()}</span></div>`).join('')}</div>` : ''}
+    <p class="text-slate-700 leading-relaxed">${r.summary||''}</p>`;
+
+  // finance
+  return `
+    <div class="flex items-center justify-between mb-4">
+      <div>${scoreHtml(r.finance_score)}</div>
+      ${r.price_delta != null ? `<span class="text-sm font-semibold ${r.price_delta > 0 ? 'text-red-500' : 'text-green-600'}">${r.price_delta > 0 ? '+' : ''}$${Math.abs(r.price_delta).toLocaleString()} vs market</span>` : ''}
+    </div>
+    ${r.estimated_market_value ? `<div class="grid grid-cols-2 gap-3 mb-4">
+      <div class="bg-slate-50 rounded-lg p-3 text-center"><p class="text-xs text-slate-400 mb-1">Est. market value</p><p class="font-bold text-slate-900">$${r.estimated_market_value.toLocaleString()}</p></div>
+      <div class="bg-slate-50 rounded-lg p-3 text-center"><p class="text-xs text-slate-400 mb-1">Annual maintenance</p><p class="font-bold text-slate-900">$${(r.projected_annual_maintenance||0).toLocaleString()}</p></div>
+    </div>` : ''}
+    <p class="text-slate-700 leading-relaxed mb-3">${r.depreciation_summary||''}</p>
+    <p class="text-slate-700 leading-relaxed">${r.financing_vs_cash_analysis||''}</p>`;
+}
+
+// ── Cancel ─────────────────────────────────────────────────────────────────
+async function cancelAnalysis() {
+  if (!currentRunId) return;
+  try { await fetch('/api/analyze/' + currentRunId, { method: 'DELETE' }); } catch {}
+  // If WS is still open it will receive 'cancelled' and call resetToForm().
+  // If it's already closed (race), reset immediately.
+  if (!ws || ws.readyState !== WebSocket.OPEN) resetToForm();
+}
+
+function resetToForm() {
+  try { ws && ws.close(); } catch {}
+  ws = null; currentRunId = null; images = [];
+  document.getElementById('photo-input').value = '';
+  document.getElementById('photo-label').textContent = 'Upload photos...';
+  showState('form');
+}
+
+// ── Full report ────────────────────────────────────────────────────────────
+const REC_COLORS = {
+  GREAT_BUY:   'bg-emerald-500 text-white',   STRONG_BUY:  'bg-green-500 text-white',
+  LEAN_BUY:    'bg-lime-400 text-slate-900',   NEGOTIATE:   'bg-amber-400 text-slate-900',
+  NEUTRAL:     'bg-slate-400 text-white',      LEAN_PASS:   'bg-orange-500 text-white',
+  STRONG_PASS: 'bg-red-600 text-white',
+};
+
+function scoreToRec(s) {
+  if (s >= 9) return 'GREAT_BUY'; if (s >= 8) return 'STRONG_BUY'; if (s >= 7) return 'LEAN_BUY';
+  if (s >= 6) return 'NEGOTIATE'; if (s >= 5) return 'NEUTRAL';    if (s >= 4) return 'LEAN_PASS';
+  return 'STRONG_PASS';
+}
+
+function setRecBadge(rec) {
+  const b = document.getElementById('rec-badge');
+  b.className = 'inline-flex px-4 py-1.5 rounded-full text-sm font-bold tracking-wider ' + (REC_COLORS[rec] || 'bg-slate-400 text-white');
+  b.textContent = rec.replace(/_/g, ' ');
+}
+
+function showReport() {
+  if (!finalReport) return;
+  const rp = finalReport;
+  setRecBadge(rp.recommendation);
+  document.getElementById('overall-score').textContent = rp.overall_score != null ? rp.overall_score.toFixed(1) : '—';
+  document.getElementById('r-vision').textContent  = rp.vision_score  ?? '—';
+  document.getElementById('r-history').textContent = rp.history_score ?? '—';
+  document.getElementById('r-finance').textContent = rp.finance_score ?? '—';
+
+  document.getElementById('r-reasons').innerHTML = (rp.key_reasons || []).map(k =>
+    '<li class="flex gap-2 text-sm text-slate-700"><span class="text-blue-500 flex-shrink-0 mt-0.5">•</span><span>' + k + '</span></li>'
+  ).join('');
+  document.getElementById('r-summary').textContent = rp.summary || '';
+
+  const repairs = rp.all_repair_items || [];
+  if (repairs.length) {
+    document.getElementById('r-repair-section').classList.remove('hidden');
+    const catClr = c => c === 'cosmetic' ? 'bg-blue-50 text-blue-600' : c === 'mechanical' ? 'bg-orange-50 text-orange-600' : 'bg-slate-50 text-slate-500';
+    document.getElementById('r-repair-list').innerHTML = repairs.map((item, i) => {
+      const chk = item.confidence !== 'not_confident';
+      return `<label class="flex items-center gap-3 cursor-pointer py-2">
+        <input type="checkbox" data-i="${i}" ${chk ? 'checked' : ''} onchange="recalc()"
+          class="w-4 h-4 rounded border-slate-300 text-blue-600 cursor-pointer flex-shrink-0" />
+        <div class="flex-1 min-w-0">
+          <span class="text-sm font-medium text-slate-800">${item.component}</span>
+          <span class="text-slate-400 text-sm"> ${item.damage_type}</span>
+          <span class="text-xs px-1.5 py-0.5 rounded ml-1 ${catClr(item.repair_category)}">${item.repair_category}</span>
+        </div>
+        <div class="text-right flex-shrink-0">
+          <p class="text-sm text-slate-700 font-medium">$${item.estimated_cost_low.toLocaleString()}–$${item.estimated_cost_high.toLocaleString()}</p>
+          <p class="text-xs ${confClr(item.confidence)}">● ${item.confidence.replace(/_/g,' ')}</p>
+        </div>
+      </label>`;
+    }).join('');
+    recalc();
+  }
+  showState('report');
+}
+
+// ── Client-side recalculation — exact replica of Python _compute_finance_score ──
+function computeFinanceScore(ap, mv, rb, repHigh, age, mi) {
+  const lo = mv * (1 - rb), hi = mv * (1 + rb);
+  let s = 7.0;
+  if (ap < lo)      s += Math.min(2.0, ((lo - ap) / lo) * 20);
+  else if (ap > hi) s -= Math.min(3.0, ((ap - hi) / Math.max(hi, 1)) * 15);
+  if (ap > 0)       s -= Math.min(2.0, (repHigh / ap) * 8);
+  const exp = age * 12000;
+  if (exp > 0) { const r = mi / exp; if (r > 1.5) s -= 1.0; else if (r > 1.2) s -= 0.5; else if (r < 0.5 && age > 2) s += 0.5; }
+  return Math.max(1, Math.min(10, Math.round(s)));
+}
+
+function recalc() {
+  if (!finalReport) return;
+  const rp = finalReport, repairs = rp.all_repair_items || [];
+  const boxes = document.querySelectorAll('#r-repair-list input[type=checkbox]');
+  let sLo = 0, sHi = 0;
+  repairs.forEach((it, i) => { if (boxes[i]?.checked) { sLo += it.estimated_cost_low; sHi += it.estimated_cost_high; } });
+
+  document.getElementById('r-repair-total').textContent =
+    '$' + sLo.toLocaleString() + '–$' + sHi.toLocaleString() + ' selected';
+
+  const mv = rp.calc_estimated_market_value, rb = rp.calc_range_band;
+  const ap = rp.calc_asking_price, age = rp.calc_vehicle_age_years, mi = rp.calc_mileage;
+
+  if (!mv || !rb) { document.getElementById('r-adj-panel').classList.add('hidden'); return; }
+  document.getElementById('r-adj-panel').classList.remove('hidden');
+
+  const newF = computeFinanceScore(ap, mv, rb, sHi, age, mi);
+  const scores = [rp.vision_score, rp.history_score, newF].filter(s => s != null);
+  const newO = scores.reduce((a, b) => a + b, 0) / scores.length;
+  const newR = scoreToRec(newO);
+
+  document.getElementById('adj-repairs').textContent  = '$' + sLo.toLocaleString() + ' – $' + sHi.toLocaleString();
+  document.getElementById('adj-effective').textContent = '$' + (ap + sLo).toLocaleString() + ' – $' + (ap + sHi).toLocaleString();
+  document.getElementById('adj-finance').textContent   = newF + ' / 10';
+  document.getElementById('adj-overall').textContent   = newO.toFixed(1) + ' / 10';
+  document.getElementById('adj-rec').textContent       = newR.replace(/_/g, ' ');
+
+  setRecBadge(newR);
+  document.getElementById('overall-score').textContent = newO.toFixed(1);
+  document.getElementById('r-finance').textContent = newF;
+}
+</script>
+</body>
+</html>

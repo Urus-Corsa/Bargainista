@@ -3,6 +3,8 @@ from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.admin import router as admin_router
 from app.api.routes import router
@@ -27,6 +29,13 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(title="Vehicle Analysis Platform", lifespan=lifespan)
 
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 app.include_router(router)
 app.include_router(admin_router)
 app.include_router(ws_router)
+
+
+@app.get("/")
+async def root() -> FileResponse:
+    return FileResponse("app/static/index.html")
