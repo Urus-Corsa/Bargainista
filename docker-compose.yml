@@ -1,14 +1,21 @@
 services:
 
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    command: alembic upgrade head
+    environment:
+      DATABASE_URL: postgresql+asyncpg://bargainista:bargainista@postgres:5432/bargainista
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   api:
     build:
       context: .
       dockerfile: Dockerfile.api
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-    volumes:
-      - ./app:/app/app       # live code mount — uvicorn --reload picks up changes instantly
-    ports:
-      - "8000:8000"
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
     environment:
       DATABASE_URL: postgresql+asyncpg://bargainista:bargainista@postgres:5432/bargainista
       REDIS_URL: redis://redis:6379/0
@@ -16,8 +23,8 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       MCP_SERVER_URL: http://mcp:8001
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       mcp:
@@ -31,10 +38,6 @@ services:
       context: .
       dockerfile: Dockerfile.api
     command: python -m app.mcp.vehicle_data
-    volumes:
-      - ./app:/app/app
-    ports:
-      - "8001:8001"
     environment:
       REDIS_URL: redis://redis:6379/0
       MCP_HOST: 0.0.0.0
@@ -57,8 +60,6 @@ services:
       context: .
       dockerfile: Dockerfile.worker
     command: celery -A app.workers.celery_app worker --loglevel=info
-    volumes:
-      - ./app:/app/app
     environment:
       DATABASE_URL: postgresql+asyncpg://bargainista:bargainista@postgres:5432/bargainista
       REDIS_URL: redis://redis:6379/0
@@ -66,8 +67,8 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/0
       MCP_SERVER_URL: http://mcp:8001
     depends_on:
-      postgres:
-        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
       redis:
         condition: service_healthy
       mcp:
@@ -78,8 +79,6 @@ services:
 
   redis:
     image: redis:7-alpine
-    ports:
-      - "6379:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -92,8 +91,6 @@ services:
       POSTGRES_USER: bargainista
       POSTGRES_PASSWORD: bargainista
       POSTGRES_DB: bargainista
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:

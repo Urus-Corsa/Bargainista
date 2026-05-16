@@ -1,12 +1,13 @@
 from app.db.seed import seed_depreciation_data
-from app.db.session import AsyncSessionLocal, engine
-from app.models.db_models import Base
+from app.db.session import AsyncSessionLocal
 
 
 async def init_db() -> None:
-    """Create all tables that do not yet exist, then seed config data if empty."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Seed depreciation config data on first run.
 
+    Tables are created by Alembic migrations (`alembic upgrade head`) before the
+    application starts. This function only populates seed data — it never creates
+    or alters tables.
+    """
     async with AsyncSessionLocal() as db:
         await seed_depreciation_data(db)
