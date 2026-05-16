@@ -1,0 +1,18 @@
+# Production additions — used on EC2 alongside the base docker-compose.yml:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Adds: Nginx reverse proxy on port 80, which proxies to api:8000 internally.
+# Cloudflare terminates HTTPS at their edge; EC2 only speaks HTTP on port 80.
+
+services:
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+    restart: unless-stopped

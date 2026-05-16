@@ -1,0 +1,32 @@
+# Development overrides — applied automatically by Docker Compose when running
+# `docker compose up` locally. Never used on EC2.
+#
+# Adds: live code volume mounts, uvicorn --reload, direct port exposure for
+# the API and internal services (postgres, redis) for local tooling access.
+
+services:
+
+  api:
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - ./app:/app/app
+    ports:
+      - "8000:8000"
+
+  mcp:
+    volumes:
+      - ./app:/app/app
+    ports:
+      - "8001:8001"
+
+  worker:
+    volumes:
+      - ./app:/app/app
+
+  postgres:
+    ports:
+      - "5432:5432"
+
+  redis:
+    ports:
+      - "6379:6379"
