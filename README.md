@@ -14,7 +14,7 @@ You submit a vehicle listing — by URL, VIN, or manual entry — along with pho
 
 ## Architecture
 
-*Architecture diagram coming soon.*
+![System Architecture](docs/system_diagram_white.png)
 
 ---
 
@@ -64,6 +64,7 @@ All agents use Anthropic's `tool_use` API to constrain LLM responses to a define
 | ORM                    | SQLAlchemy 2.x async                                                    |
 | Schema validation      | Pydantic v2                                                             |
 | Agent orchestration    | LangGraph                                                               |
+| Observability          | LangSmith (LangGraph execution tracing)                                 |
 | LLM                    | Anthropic Claude (Haiku for narrative, Sonnet for reasoning and vision) |
 | Containerization       | Docker Compose — 6 services                                             |
 | Infrastructure         | AWS EC2 t3.small, Elastic IP, Nginx reverse proxy                       |
