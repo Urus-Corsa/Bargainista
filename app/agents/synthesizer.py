@@ -15,15 +15,13 @@ from __future__ import annotations
 
 import logging
 
-import anthropic
-
-from app.core.config import settings
+from app.agents.finance import FinancePrecomputed
 from app.core.llm import get_anthropic_client
 from app.models.schemas import (
     ConfidenceLevel,
     EstimateSource,
-    FinanceAgentResult,
     FinalReport,
+    FinanceAgentResult,
     HistoryAgentResult,
     ListingInput,
     Recommendation,
@@ -31,7 +29,6 @@ from app.models.schemas import (
     VisionAgentResult,
     score_to_recommendation,
 )
-from app.agents.finance import FinancePrecomputed
 
 logger = logging.getLogger(__name__)
 

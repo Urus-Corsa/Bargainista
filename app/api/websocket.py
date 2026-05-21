@@ -144,5 +144,5 @@ async def ws_analyze(websocket: WebSocket, run_id: str) -> None:
 
     finally:
         await pubsub.unsubscribe(f"run:{run_id}")
-        await pubsub.aclose()
-        await redis.aclose()
+        await pubsub.aclose()  # type: ignore[attr-defined]
+        await redis.aclose()  # type: ignore[attr-defined]

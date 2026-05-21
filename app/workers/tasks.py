@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 
 import redis.asyncio as aioredis
 from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.agents.orchestrator import stream_analysis
@@ -31,9 +31,11 @@ from app.models.db_models import (
     AgentName,
     AgentResult,
     AnalysisRun,
-    FinalReport as FinalReportORM,
     RecommendationEnum,
     RunStatus,
+)
+from app.models.db_models import (
+    FinalReport as FinalReportORM,
 )
 from app.models.schemas import ListingInput
 from app.utils.ingestion import prepare_listing
@@ -217,7 +219,7 @@ async def _async_run(run_id: str) -> None:
             logger.exception("Failed to mark run %s as failed after exception", run_id)
 
     finally:
-        await redis.aclose()
+        await redis.aclose()  # type: ignore[attr-defined]
         await engine.dispose()
 
 

@@ -22,11 +22,9 @@ import logging
 from datetime import datetime
 from typing import TypedDict
 
-import anthropic
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.config import settings
 from app.core.llm import get_anthropic_client
 from app.models.db_models import BrandModifier, DepreciationCategory, VariantOverride
 from app.models.schemas import (

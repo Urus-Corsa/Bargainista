@@ -33,8 +33,8 @@ from app.agents import finance, history, vision
 from app.agents.finance import FinancePrecomputed
 from app.agents.synthesizer import synthesize
 from app.models.schemas import (
-    FinanceAgentResult,
     FinalReport,
+    FinanceAgentResult,
     HistoryAgentResult,
     ListingInput,
     VisionAgentResult,

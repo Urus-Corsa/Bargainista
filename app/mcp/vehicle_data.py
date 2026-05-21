@@ -552,7 +552,7 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> dict:
         return {"error": str(exc)}
     finally:
         if redis:
-            await redis.aclose()
+            await redis.aclose()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------
@@ -561,11 +561,11 @@ async def _dispatch_tool(name: str, arguments: dict[str, Any]) -> dict:
 
 
 async def _serve() -> None:
+    import uvicorn
     from starlette.applications import Starlette
     from starlette.requests import Request
     from starlette.responses import JSONResponse
     from starlette.routing import Mount, Route
-    import uvicorn
 
     host = os.getenv("MCP_HOST", "0.0.0.0")
     port = int(os.getenv("MCP_PORT", "8001"))

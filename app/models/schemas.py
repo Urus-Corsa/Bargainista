@@ -11,7 +11,6 @@ from enum import Enum
 
 from pydantic import BaseModel, Field, HttpUrl, model_validator
 
-
 # ---------------------------------------------------------------------------
 # Enums
 # ---------------------------------------------------------------------------

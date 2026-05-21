@@ -175,7 +175,7 @@ BRAND_SEED = [
 # Variant overrides
 # ---------------------------------------------------------------------------
 
-VARIANT_SEED = [
+VARIANT_SEED: list[dict[str, object]] = [
     # BMW — performance positive
     {
         "make": "bmw",

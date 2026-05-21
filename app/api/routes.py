@@ -64,6 +64,6 @@ async def cancel_analysis(
             json.dumps({"event": "cancelled", "run_id": run_id, "payload": {}}),
         )
     finally:
-        await redis.aclose()
+        await redis.aclose()  # type: ignore[attr-defined]
 
     return {"status": "cancelled"}

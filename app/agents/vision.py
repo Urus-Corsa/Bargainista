@@ -23,10 +23,8 @@ from __future__ import annotations
 
 import logging
 
-import anthropic
 from langsmith import tracing_context
 
-from app.core.config import settings
 from app.core.llm import get_anthropic_client
 from app.models.schemas import (
     ConfidenceLevel,

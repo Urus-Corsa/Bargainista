@@ -16,12 +16,8 @@ Entry point: run(listing) -> HistoryAgentResult
 
 from __future__ import annotations
 
-import json
 import logging
 
-import anthropic
-
-from app.core.config import settings
 from app.core.llm import get_anthropic_client
 from app.mcp.client import call_tool
 from app.models.schemas import (
