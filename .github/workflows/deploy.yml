@@ -22,7 +22,7 @@ jobs:
             --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --timeout-seconds 600 \
-            --parameters 'commands=["cd /home/ec2-user/Bargainista && git pull origin main && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build 2>&1"]' \
+            --parameters 'commands=["git config --global --add safe.directory /home/ec2-user/Bargainista && cd /home/ec2-user/Bargainista && git pull origin main && docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build 2>&1"]' \
             --query "Command.CommandId" \
             --output text)
 
