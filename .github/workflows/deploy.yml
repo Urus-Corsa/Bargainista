@@ -11,6 +11,7 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.3
+        timeout-minutes: 3
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
