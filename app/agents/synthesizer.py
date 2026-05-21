@@ -207,7 +207,7 @@ async def _generate_narrative(
             "Confidence is reduced accordingly.\n"
         )
 
-    response = await client.messages.create(
+    response = await client.messages.create(  # type: ignore[call-overload]
         model="claude-sonnet-4-6",
         max_tokens=1000,
         system=(

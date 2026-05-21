@@ -502,7 +502,7 @@ async def run(listing: ListingInput, images: list[str]) -> VisionAgentResult:
     # Hide inputs from LangSmith — the message payload contains base64 image bytes
     # that exceed LangSmith's 25MB per-field limit. Outputs (token counts, content) still traced.
     with tracing_context(hide_inputs=True):
-        response = await client.messages.create(
+        response = await client.messages.create(  # type: ignore[call-overload]
             model="claude-sonnet-4-6",
             max_tokens=3_000,
             system=_SYSTEM_PROMPT,
