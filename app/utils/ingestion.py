@@ -40,9 +40,9 @@ def _resize_if_needed(b64: str) -> str:
     if w <= _MAX_IMAGE_DIM and h <= _MAX_IMAGE_DIM:
         return b64
     scale = _MAX_IMAGE_DIM / max(w, h)
-    img = img.resize((int(w * scale), int(h * scale)), Image.LANCZOS)
+    resized_img = img.resize((int(w * scale), int(h * scale)), Image.Resampling.LANCZOS)
     buf = io.BytesIO()
-    img.convert("RGB").save(buf, format="JPEG", quality=85)
+    resized_img.convert("RGB").save(buf, format="JPEG", quality=85)
     resized = base64.b64encode(buf.getvalue()).decode("utf-8")
     logger.debug("Resized image from %dx%d to %dx%d", w, h, int(w * scale), int(h * scale))
     return resized

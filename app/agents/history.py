@@ -460,7 +460,7 @@ async def run(listing: ListingInput) -> HistoryAgentResult:
     # ------------------------------------------------------------------
     client = get_anthropic_client()
 
-    response = await client.messages.create(
+    response = await client.messages.create(  # type: ignore[call-overload]
         model="claude-sonnet-4-6",
         max_tokens=2048,
         system=_SYSTEM_PROMPT,

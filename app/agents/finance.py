@@ -368,7 +368,7 @@ async def _generate_independent_narrative(computed: dict) -> tuple[str, str]:
         "You are a vehicle finance analyst writing a report for a used-car buyer. "
         "Using the computed data below, produce the two narrative fields.\n\n" + lines
     )
-    response = await client.messages.create(
+    response = await client.messages.create(  # type: ignore[call-overload]
         model="claude-haiku-4-5-20251001",
         max_tokens=800,
         tools=[_INDEPENDENT_NARRATIVE_TOOL],  # type: ignore[list-item]
@@ -395,7 +395,7 @@ async def _generate_summary(computed: dict) -> str:
         "You are a vehicle finance analyst writing a report for a used-car buyer. "
         "Using the computed data below, produce the summary field.\n\n" + lines
     )
-    response = await client.messages.create(
+    response = await client.messages.create(  # type: ignore[call-overload]
         model="claude-haiku-4-5-20251001",
         max_tokens=400,
         tools=[_SUMMARY_TOOL],  # type: ignore[list-item]

@@ -181,6 +181,8 @@ async def _async_run(run_id: str) -> None:
                                     AnalysisRun.id == uuid.UUID(run_id)
                                 )
                             )
+                            if run_row is None:
+                                raise RuntimeError(f"AnalysisRun {run_id} not found")
                             run_row.full_result = report_json
                             run_row.status = RunStatus.complete
                             await write_db.commit()
