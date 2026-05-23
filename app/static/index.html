@@ -29,24 +29,50 @@
   <p class="text-slate-500 text-sm mb-8">AI-powered buy / negotiate / pass recommendation from three independent agents.</p>
 
   <div class="flex border-b border-slate-200 mb-6">
-    <button onclick="setTab('url')" id="tb-url" class="px-4 py-2.5 text-sm font-medium text-blue-600 border-b-2 border-blue-600 -mb-px">By URL</button>
+    <span class="relative group">
+      <button id="tb-url" class="px-4 py-2.5 text-sm font-medium text-slate-300 border-b-2 border-transparent -mb-px cursor-default pointer-events-none" tabindex="-1" aria-disabled="true">By URL</button>
+      <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs rounded-lg whitespace-nowrap invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10">Coming soon, stay tuned!</span>
+    </span>
     <button onclick="setTab('vin')" id="tb-vin" class="px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent -mb-px hover:text-slate-700">By VIN</button>
     <button onclick="setTab('manual')" id="tb-manual" class="px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent -mb-px hover:text-slate-700">Manual</button>
   </div>
 
-  <div id="tp-url" class="mb-5">
-    <label class="lbl">Listing URL <span class="text-slate-400 font-normal">(provenance only)</span></label>
-    <input id="listing_url" type="url" placeholder="https://craigslist.org/..." class="inp" />
+  <div id="tp-url" class="mb-5 hidden">
+    <p class="text-slate-400 text-sm">URL-based analysis is coming soon.</p>
   </div>
-  <div id="tp-vin" class="mb-5 hidden">
+  <div id="tp-vin" class="mb-5">
     <label class="lbl">VIN <span class="text-slate-400 font-normal">(17 chars — year/make/model auto-filled by NHTSA)</span></label>
-    <input id="vin" type="text" maxlength="17" placeholder="1HGCM82633A004352" class="inp" style="font-family:monospace" />
+    <div class="flex gap-2">
+      <input id="vin" type="text" maxlength="17" placeholder="1HGCM82633A004352" class="inp flex-1" style="font-family:monospace" />
+      <button id="vin-lookup-btn" onclick="lookupVin()" type="button"
+        class="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500 hover:text-blue-600 transition-colors"
+        title="Look up vehicle">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/>
+        </svg>
+      </button>
+    </div>
+    <p id="vin-confirmed-label" class="hidden mt-1.5 text-sm text-green-600 font-medium"></p>
+    <div class="mt-3">
+      <label class="lbl">Listing URL <span class="text-slate-400 font-normal">(provenance — optional)</span></label>
+      <input id="listing_url" type="url" placeholder="https://craigslist.org/..." class="inp" />
+    </div>
   </div>
   <div id="tp-manual" class="mb-5 hidden">
     <div class="grid grid-cols-3 gap-3">
       <div><label class="lbl">Year *</label><input id="year" type="number" placeholder="2019" min="1980" max="2026" class="inp" /></div>
       <div><label class="lbl">Make *</label><input id="make" type="text" placeholder="Toyota" class="inp" /></div>
       <div><label class="lbl">Model *</label><input id="model" type="text" placeholder="Camry" class="inp" /></div>
+    </div>
+    <div class="grid grid-cols-2 gap-3 mt-3">
+      <div>
+        <label class="lbl">Trim <span class="text-slate-400 font-normal">(optional)</span></label>
+        <input id="trim" type="text" placeholder="EX, Sport, Limited…" class="inp" />
+      </div>
+    </div>
+    <div class="mt-3">
+      <label class="lbl">Listing URL <span class="text-slate-400 font-normal">(provenance — optional)</span></label>
+      <input id="listing_url_manual" type="url" placeholder="https://craigslist.org/..." class="inp" />
     </div>
   </div>
 
@@ -61,6 +87,11 @@
   </div>
 
   <div class="mb-4"><label class="lbl">Location *</label><input id="location" type="text" placeholder="Seattle, WA" class="inp" /></div>
+
+  <div class="mb-4">
+    <label class="lbl">Listing Description <span class="text-slate-400 font-normal">(seller's ad text — improves History agent accuracy)</span></label>
+    <textarea id="listing_description" rows="3" placeholder="Paste the seller's listing text..." class="inp resize-none"></textarea>
+  </div>
 
   <div class="mb-4">
     <label class="lbl">Photos <span class="text-slate-400 font-normal">(required unless you add damage notes)</span></label>
@@ -80,10 +111,9 @@
     Optional details
   </button>
   <div id="opt-section" class="hidden space-y-4 mb-5">
-    <div><label class="lbl">Listing Description</label><textarea id="listing_description" rows="3" placeholder="Paste the seller's listing text..." class="inp resize-none"></textarea></div>
     <div><label class="lbl">History Report Text</label><textarea id="history_report_text" rows="3" placeholder="Paste CarFax / AutoCheck content..." class="inp resize-none"></textarea></div>
     <div><label class="lbl">Damage Notes <span class="text-slate-400 font-normal">(satisfies photo requirement)</span></label><textarea id="user_damage_notes" rows="2" placeholder="Describe any visible damage if you can't upload photos..." class="inp resize-none"></textarea></div>
-    <div><label class="lbl">Image URLs <span class="text-slate-400 font-normal">(one per line)</span></label><textarea id="image_urls_text" rows="3" placeholder="https://images.craigslist.org/..." class="inp resize-none" style="font-family:monospace;font-size:.75rem"></textarea></div>
+    <div><label class="lbl">Image URLs <span class="text-slate-400 font-normal">(one per line — link to listing images, not photo uploads)</span></label><textarea id="image_urls_text" rows="3" placeholder="https://images.craigslist.org/..." class="inp resize-none" style="font-family:monospace;font-size:.75rem"></textarea></div>
   </div>
 
   <p id="form-error" class="text-red-600 text-sm mb-3 hidden"></p>
@@ -248,14 +278,16 @@
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
-let activeTab = 'url', images = [], currentRunId = null, ws = null;
+let activeTab = 'vin', images = [], currentRunId = null, ws = null;
 let agentResults = {}, finalReport = null;
+let vinDecoded = null; // {year, make, model, trim} set after VIN confirmation popup
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
 function setTab(t) {
   activeTab = t;
   ['url','vin','manual'].forEach(n => {
     document.getElementById('tp-'+n).classList.toggle('hidden', n !== t);
+    if (n === 'url') return; // URL tab is permanently disabled — do not update its styling
     const b = document.getElementById('tb-'+n);
     b.className = n === t
       ? 'px-4 py-2.5 text-sm font-medium text-blue-600 border-b-2 border-blue-600 -mb-px'
@@ -293,6 +325,10 @@ function clearErr() { document.getElementById('form-error').classList.add('hidde
 
 async function submitListing() {
   clearErr();
+  if (activeTab === 'vin' && vinDecoded === null) {
+    await lookupVin();
+    return;
+  }
   if (!fv('mileage') || !fv('asking_price') || !fv('location'))
     return showErr('Mileage, asking price, and location are required.');
   if (activeTab === 'vin' && !fv('vin'))
@@ -306,11 +342,14 @@ async function submitListing() {
   const body = {
     input_method: activeTab,
     mileage: +fv('mileage'), asking_price: +fv('asking_price'), location: fv('location'),
-    ...(fv('listing_url') && { listing_url: fv('listing_url') }),
+    ...(fv(activeTab === 'manual' ? 'listing_url_manual' : 'listing_url') && { listing_url: fv(activeTab === 'manual' ? 'listing_url_manual' : 'listing_url') }),
     ...(fv('vin') && { vin: fv('vin') }),
+    ...(vinDecoded && { year: vinDecoded.year, make: vinDecoded.make, model: vinDecoded.model }),
+    ...(vinDecoded?.trim && { trim: vinDecoded.trim }),
     ...(fv('year') && { year: +fv('year') }),
     ...(fv('make') && { make: fv('make') }),
     ...(fv('model') && { model: fv('model') }),
+    ...(fv('trim') && { trim: fv('trim') }),
     ...(fv('listing_description') && { listing_description: fv('listing_description') }),
     ...(fv('history_report_text') && { history_report_text: fv('history_report_text') }),
     ...(fv('user_damage_notes') && { user_damage_notes: fv('user_damage_notes') }),
@@ -484,6 +523,92 @@ function renderAgent(agent, r) {
     <p class="text-slate-700 leading-relaxed">${r.financing_vs_cash_analysis||''}</p>`;
 }
 
+// ── VIN lookup ─────────────────────────────────────────────────────────────
+async function lookupVin() {
+  const vin = fv('vin');
+  if (vin.length !== 17) {
+    showErr('VIN must be exactly 17 characters.');
+    return;
+  }
+  const btn = document.getElementById('vin-lookup-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<svg class="w-4 h-4 spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>';
+  try {
+    const res = await fetch('/api/vin/' + vin);
+    if (res.ok) {
+      const data = await res.json();
+      openVinPopup(data);
+    } else {
+      openVinPopup(null);
+    }
+  } catch {
+    openVinPopup(null);
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"/></svg>';
+  }
+}
+
+function openVinPopup(data) {
+  if (data) {
+    document.getElementById('modal-title').textContent = 'Confirm your vehicle';
+    document.getElementById('modal-body').innerHTML = `
+      <p class="text-slate-500 text-sm mb-4">We decoded your VIN. Confirm or edit the details below.</p>
+      <div class="space-y-3 mb-5">
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl">Year</label><input id="vp-year" type="number" value="${data.year || ''}" class="inp"/></div>
+          <div><label class="lbl">Make</label><input id="vp-make" type="text" value="${data.make || ''}" class="inp"/></div>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div><label class="lbl">Model</label><input id="vp-model" type="text" value="${data.model || ''}" class="inp"/></div>
+          <div><label class="lbl">Trim <span class="text-slate-400 font-normal">(optional)</span></label><input id="vp-trim" type="text" value="${data.trim || ''}" class="inp"/></div>
+        </div>
+      </div>
+      <button onclick="confirmVin()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors">
+        Confirm — this is my vehicle
+      </button>
+    `;
+  } else {
+    document.getElementById('modal-title').textContent = 'VIN not found';
+    document.getElementById('modal-body').innerHTML = `
+      <p class="text-slate-600 text-sm mb-5">We couldn't identify this VIN. You can try again or enter your vehicle details manually.</p>
+      <div class="flex gap-3">
+        <button onclick="document.getElementById('modal').classList.add('hidden'); lookupVin();"
+          class="flex-1 border border-slate-200 text-slate-600 hover:bg-slate-50 font-medium py-2.5 rounded-lg text-sm transition-colors">
+          Try again
+        </button>
+        <button onclick="switchToManual()"
+          class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors">
+          Enter manually
+        </button>
+      </div>
+    `;
+  }
+  document.getElementById('modal').classList.remove('hidden');
+}
+
+function confirmVin() {
+  vinDecoded = {
+    year: parseInt(document.getElementById('vp-year').value) || null,
+    make: document.getElementById('vp-make').value.trim(),
+    model: document.getElementById('vp-model').value.trim(),
+    trim: document.getElementById('vp-trim').value.trim() || null,
+  };
+  const name = [vinDecoded.year, vinDecoded.make, vinDecoded.model, vinDecoded.trim].filter(Boolean).join(' ');
+  const lbl = document.getElementById('vin-confirmed-label');
+  lbl.textContent = '✓ ' + name;
+  lbl.classList.remove('hidden');
+  document.getElementById('modal').classList.add('hidden');
+  clearErr();
+}
+
+function switchToManual() {
+  document.getElementById('modal').classList.add('hidden');
+  setTab('manual');
+  // shared fields (mileage, asking_price, location, etc.) are in their own elements — preserved automatically
+  // photos (images array) are global state — preserved automatically
+}
+
 // ── Cancel ─────────────────────────────────────────────────────────────────
 async function cancelAnalysis() {
   if (!currentRunId) return;
@@ -495,9 +620,11 @@ async function cancelAnalysis() {
 
 function resetToForm() {
   try { ws && ws.close(); } catch {}
-  ws = null; currentRunId = null; images = [];
+  ws = null; currentRunId = null; images = []; vinDecoded = null;
   document.getElementById('photo-input').value = '';
   document.getElementById('photo-label').textContent = 'Upload photos...';
+  const lbl = document.getElementById('vin-confirmed-label');
+  if (lbl) { lbl.textContent = ''; lbl.classList.add('hidden'); }
   showState('form');
 }
 
@@ -603,6 +730,9 @@ function recalc() {
   document.getElementById('overall-score').textContent = newO.toFixed(1);
   document.getElementById('r-finance').textContent = newF;
 }
+
+// ── Init ───────────────────────────────────────────────────────────────────
+setTab('vin');
 </script>
 </body>
 </html>
