@@ -158,7 +158,7 @@ async def prepare_listing(listing: ListingInput) -> tuple[ListingInput, list[str
     if vin_specs:
         enriched = listing.model_copy(
             update={
-                "year": vin_specs.get("year") or listing.year,
+                "year": int(vin_specs["year"]) if vin_specs.get("year") else listing.year,
                 "make": vin_specs.get("make") or listing.make,
                 "model": vin_specs.get("model") or listing.model,
                 "trim": vin_specs.get("trim") or listing.trim,

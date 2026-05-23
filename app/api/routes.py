@@ -7,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.db.session import get_db
+from app.mcp.client import call_tool
 from app.models.db_models import AnalysisRun, RunStatus
 from app.models.schemas import ListingInput
 from app.workers.tasks import run_analysis_task
@@ -17,6 +18,24 @@ router = APIRouter()
 @router.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+@router.get("/api/vin/{vin}")
+async def decode_vin(vin: str) -> dict:
+    """Decode a VIN via the MCP get_vehicle_specs tool.
+
+    Returns year, make, model, trim from NHTSA vPIC. Returns 404 if
+    the VIN is unrecognised or the MCP server is unavailable.
+    """
+    specs = await call_tool("get_vehicle_specs", {"vin": vin})
+    if not specs:
+        raise HTTPException(status_code=404, detail="VIN not found")
+    return {
+        "year": specs.get("year"),
+        "make": specs.get("make"),
+        "model": specs.get("model"),
+        "trim": specs.get("trim"),
+    }
 
 
 @router.post("/api/analyze", status_code=202)
