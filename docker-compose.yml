@@ -32,6 +32,7 @@ services:
     env_file:
       - path: .env
         required: false      # API keys live here; stack still starts without them
+    restart: unless-stopped
 
   mcp:
     build:
@@ -76,6 +77,7 @@ services:
     env_file:
       - path: .env
         required: false
+    restart: unless-stopped
 
   redis:
     image: redis:7-alpine

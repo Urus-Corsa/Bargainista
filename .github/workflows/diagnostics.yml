@@ -20,17 +20,7 @@ jobs:
             --instance-id "${{ secrets.EC2_INSTANCE_ID }}" \
             --document-name "AWS-RunShellScript" \
             --timeout-seconds 60 \
-            --parameters 'commands=[
-              "cd /home/ec2-user/Bargainista",
-              "echo === CONTAINER STATUS ===",
-              "docker compose -f docker-compose.yml -f docker-compose.prod.yml ps",
-              "echo === API LOGS (last 50 lines) ===",
-              "docker compose -f docker-compose.yml -f docker-compose.prod.yml logs api --tail 50",
-              "echo === WORKER LOGS (last 20 lines) ===",
-              "docker compose -f docker-compose.yml -f docker-compose.prod.yml logs worker --tail 20",
-              "echo === NGINX LOGS (last 20 lines) ===",
-              "docker compose -f docker-compose.yml -f docker-compose.prod.yml logs nginx --tail 20"
-            ]' \
+            --parameters 'commands=["cd /home/ec2-user/Bargainista && echo === CONTAINER STATUS === && docker compose -f docker-compose.yml -f docker-compose.prod.yml ps --all && echo === API LOGS === && docker compose -f docker-compose.yml -f docker-compose.prod.yml logs api --tail 50 && echo === WORKER LOGS === && docker compose -f docker-compose.yml -f docker-compose.prod.yml logs worker --tail 20 && echo === NGINX LOGS === && docker compose -f docker-compose.yml -f docker-compose.prod.yml logs nginx --tail 20"]' \
             --query "Command.CommandId" \
             --output text)
 
