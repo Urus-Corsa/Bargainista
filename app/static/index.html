@@ -29,24 +29,34 @@
   <p class="text-slate-500 text-sm mb-8">AI-powered buy / negotiate / pass recommendation from three independent agents.</p>
 
   <div class="flex border-b border-slate-200 mb-6">
-    <button onclick="setTab('url')" id="tb-url" class="px-4 py-2.5 text-sm font-medium text-blue-600 border-b-2 border-blue-600 -mb-px">By URL</button>
+    <span class="relative group">
+      <button id="tb-url" class="px-4 py-2.5 text-sm font-medium text-slate-300 border-b-2 border-transparent -mb-px cursor-default pointer-events-none" tabindex="-1" aria-disabled="true">By URL</button>
+      <span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2.5 py-1.5 bg-slate-800 text-white text-xs rounded-lg whitespace-nowrap invisible group-hover:visible opacity-0 group-hover:opacity-100 transition-opacity duration-150 pointer-events-none z-10">Coming soon, stay tuned!</span>
+    </span>
     <button onclick="setTab('vin')" id="tb-vin" class="px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent -mb-px hover:text-slate-700">By VIN</button>
     <button onclick="setTab('manual')" id="tb-manual" class="px-4 py-2.5 text-sm font-medium text-slate-500 border-b-2 border-transparent -mb-px hover:text-slate-700">Manual</button>
   </div>
 
-  <div id="tp-url" class="mb-5">
-    <label class="lbl">Listing URL <span class="text-slate-400 font-normal">(provenance only)</span></label>
-    <input id="listing_url" type="url" placeholder="https://craigslist.org/..." class="inp" />
+  <div id="tp-url" class="mb-5 hidden">
+    <p class="text-slate-400 text-sm">URL-based analysis is coming soon.</p>
   </div>
-  <div id="tp-vin" class="mb-5 hidden">
+  <div id="tp-vin" class="mb-5">
     <label class="lbl">VIN <span class="text-slate-400 font-normal">(17 chars — year/make/model auto-filled by NHTSA)</span></label>
     <input id="vin" type="text" maxlength="17" placeholder="1HGCM82633A004352" class="inp" style="font-family:monospace" />
+    <div class="mt-3">
+      <label class="lbl">Listing URL <span class="text-slate-400 font-normal">(provenance — optional)</span></label>
+      <input id="listing_url" type="url" placeholder="https://craigslist.org/..." class="inp" />
+    </div>
   </div>
   <div id="tp-manual" class="mb-5 hidden">
     <div class="grid grid-cols-3 gap-3">
       <div><label class="lbl">Year *</label><input id="year" type="number" placeholder="2019" min="1980" max="2026" class="inp" /></div>
       <div><label class="lbl">Make *</label><input id="make" type="text" placeholder="Toyota" class="inp" /></div>
       <div><label class="lbl">Model *</label><input id="model" type="text" placeholder="Camry" class="inp" /></div>
+    </div>
+    <div class="mt-3">
+      <label class="lbl">Listing URL <span class="text-slate-400 font-normal">(provenance — optional)</span></label>
+      <input id="listing_url_manual" type="url" placeholder="https://craigslist.org/..." class="inp" />
     </div>
   </div>
 
@@ -248,7 +258,7 @@
 
 <script>
 // ── State ──────────────────────────────────────────────────────────────────
-let activeTab = 'url', images = [], currentRunId = null, ws = null;
+let activeTab = 'vin', images = [], currentRunId = null, ws = null;
 let agentResults = {}, finalReport = null;
 
 // ── Tabs ───────────────────────────────────────────────────────────────────
@@ -256,6 +266,7 @@ function setTab(t) {
   activeTab = t;
   ['url','vin','manual'].forEach(n => {
     document.getElementById('tp-'+n).classList.toggle('hidden', n !== t);
+    if (n === 'url') return; // URL tab is permanently disabled — do not update its styling
     const b = document.getElementById('tb-'+n);
     b.className = n === t
       ? 'px-4 py-2.5 text-sm font-medium text-blue-600 border-b-2 border-blue-600 -mb-px'
@@ -306,7 +317,7 @@ async function submitListing() {
   const body = {
     input_method: activeTab,
     mileage: +fv('mileage'), asking_price: +fv('asking_price'), location: fv('location'),
-    ...(fv('listing_url') && { listing_url: fv('listing_url') }),
+    ...(fv(activeTab === 'manual' ? 'listing_url_manual' : 'listing_url') && { listing_url: fv(activeTab === 'manual' ? 'listing_url_manual' : 'listing_url') }),
     ...(fv('vin') && { vin: fv('vin') }),
     ...(fv('year') && { year: +fv('year') }),
     ...(fv('make') && { make: fv('make') }),
@@ -603,6 +614,9 @@ function recalc() {
   document.getElementById('overall-score').textContent = newO.toFixed(1);
   document.getElementById('r-finance').textContent = newF;
 }
+
+// ── Init ───────────────────────────────────────────────────────────────────
+setTab('vin');
 </script>
 </body>
 </html>
