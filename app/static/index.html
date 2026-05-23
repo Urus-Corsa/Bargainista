@@ -64,6 +64,12 @@
       <div><label class="lbl">Make *</label><input id="make" type="text" placeholder="Toyota" class="inp" /></div>
       <div><label class="lbl">Model *</label><input id="model" type="text" placeholder="Camry" class="inp" /></div>
     </div>
+    <div class="grid grid-cols-2 gap-3 mt-3">
+      <div>
+        <label class="lbl">Trim <span class="text-slate-400 font-normal">(optional)</span></label>
+        <input id="trim" type="text" placeholder="EX, Sport, Limited…" class="inp" />
+      </div>
+    </div>
     <div class="mt-3">
       <label class="lbl">Listing URL <span class="text-slate-400 font-normal">(provenance — optional)</span></label>
       <input id="listing_url_manual" type="url" placeholder="https://craigslist.org/..." class="inp" />
@@ -83,6 +89,11 @@
   <div class="mb-4"><label class="lbl">Location *</label><input id="location" type="text" placeholder="Seattle, WA" class="inp" /></div>
 
   <div class="mb-4">
+    <label class="lbl">Listing Description <span class="text-slate-400 font-normal">(seller's ad text — improves History agent accuracy)</span></label>
+    <textarea id="listing_description" rows="3" placeholder="Paste the seller's listing text..." class="inp resize-none"></textarea>
+  </div>
+
+  <div class="mb-4">
     <label class="lbl">Photos <span class="text-slate-400 font-normal">(required unless you add damage notes)</span></label>
     <label class="flex items-center gap-3 border-2 border-dashed border-slate-200 rounded-lg px-4 py-3.5 cursor-pointer hover:border-blue-400 hover:bg-blue-50 transition-colors">
       <svg class="w-5 h-5 text-slate-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -100,10 +111,9 @@
     Optional details
   </button>
   <div id="opt-section" class="hidden space-y-4 mb-5">
-    <div><label class="lbl">Listing Description</label><textarea id="listing_description" rows="3" placeholder="Paste the seller's listing text..." class="inp resize-none"></textarea></div>
     <div><label class="lbl">History Report Text</label><textarea id="history_report_text" rows="3" placeholder="Paste CarFax / AutoCheck content..." class="inp resize-none"></textarea></div>
     <div><label class="lbl">Damage Notes <span class="text-slate-400 font-normal">(satisfies photo requirement)</span></label><textarea id="user_damage_notes" rows="2" placeholder="Describe any visible damage if you can't upload photos..." class="inp resize-none"></textarea></div>
-    <div><label class="lbl">Image URLs <span class="text-slate-400 font-normal">(one per line)</span></label><textarea id="image_urls_text" rows="3" placeholder="https://images.craigslist.org/..." class="inp resize-none" style="font-family:monospace;font-size:.75rem"></textarea></div>
+    <div><label class="lbl">Image URLs <span class="text-slate-400 font-normal">(one per line — link to listing images, not photo uploads)</span></label><textarea id="image_urls_text" rows="3" placeholder="https://images.craigslist.org/..." class="inp resize-none" style="font-family:monospace;font-size:.75rem"></textarea></div>
   </div>
 
   <p id="form-error" class="text-red-600 text-sm mb-3 hidden"></p>
@@ -339,6 +349,7 @@ async function submitListing() {
     ...(fv('year') && { year: +fv('year') }),
     ...(fv('make') && { make: fv('make') }),
     ...(fv('model') && { model: fv('model') }),
+    ...(fv('trim') && { trim: fv('trim') }),
     ...(fv('listing_description') && { listing_description: fv('listing_description') }),
     ...(fv('history_report_text') && { history_report_text: fv('history_report_text') }),
     ...(fv('user_damage_notes') && { user_damage_notes: fv('user_damage_notes') }),
