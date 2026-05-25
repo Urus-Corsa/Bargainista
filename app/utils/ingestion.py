@@ -111,19 +111,13 @@ async def resolve_vin(listing: ListingInput) -> dict | None:
     if not listing.vin:
         return None
 
-    # Import here to avoid circular imports once the MCP client module exists.
-    # TODO: replace this stub with the real MCP client call once
-    #       app/mcp/vehicle_data.py is implemented (next step in Phase 3).
+    # Deferred import to avoid circular imports at module load time.
     try:
         from app.mcp.client import call_tool  # noqa: PLC0415
         specs = await call_tool("get_vehicle_specs", {"vin": listing.vin})
         return specs
     except ImportError:
-        logger.warning(
-            "MCP client not yet available — VIN %s not resolved. "
-            "Ensure app/mcp/client.py is implemented.",
-            listing.vin,
-        )
+        logger.warning("MCP client unavailable — VIN %s not resolved.", listing.vin)
         return None
     except Exception as exc:
         logger.warning("VIN resolution failed for %s: %s", listing.vin, exc)
