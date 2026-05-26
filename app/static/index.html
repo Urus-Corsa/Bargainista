@@ -112,6 +112,21 @@
   </button>
   <div id="opt-section" class="hidden space-y-4 mb-5">
     <div><label class="lbl">History Report Text</label><textarea id="history_report_text" rows="3" placeholder="Paste CarFax / AutoCheck content..." class="inp resize-none"></textarea></div>
+
+    <div>
+      <label class="lbl">History documents <span class="text-slate-400 font-normal">(optional)</span></label>
+      <p class="text-xs text-slate-400 mb-2">Upload PDFs or photos of service records, Carfax reports, inspection sheets</p>
+      <button type="button" onclick="document.getElementById('doc-input').click()"
+        class="inline-flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 rounded-lg text-sm text-slate-600 bg-white hover:bg-slate-50 hover:border-slate-300 transition-colors">
+        <svg class="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+        </svg>
+        Choose files
+      </button>
+      <input id="doc-input" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp" class="hidden" onchange="handleDocuments(this)" />
+      <div id="doc-chips" class="mt-2 flex flex-wrap gap-2"></div>
+    </div>
+
     <div><label class="lbl">Damage Notes <span class="text-slate-400 font-normal">(satisfies photo requirement)</span></label><textarea id="user_damage_notes" rows="2" placeholder="Describe any visible damage if you can't upload photos..." class="inp resize-none"></textarea></div>
     <div><label class="lbl">Image URLs <span class="text-slate-400 font-normal">(one per line — link to listing images, not photo uploads)</span></label><textarea id="image_urls_text" rows="3" placeholder="https://images.craigslist.org/..." class="inp resize-none" style="font-family:monospace;font-size:.75rem"></textarea></div>
   </div>
@@ -277,6 +292,113 @@
 </div>
 
 <script>
+// ── Document upload state ──────────────────────────────────────────────────
+// Map<chipId: string, {filename: string, extracted_text: string}> — populated on success
+const docTexts = new Map();
+// Map<chipId: string, 'pending' | 'success' | 'failed'> — tracks chip status
+const docStatus = new Map();
+let docIdSeq = 0;
+
+function handleDocuments(input) {
+  const files = Array.from(input.files);
+  input.value = ''; // reset so same file can be re-selected
+  if (!files.length) return;
+  files.forEach(f => {
+    const id = 'doc-' + (++docIdSeq);
+    docStatus.set(id, 'pending');
+    renderChip(id, f.name, 'pending');
+    updateSubmitState();
+    processDoc(id, f);
+  });
+}
+
+function renderChip(id, filename, status, errorMsg) {
+  const container = document.getElementById('doc-chips');
+  // remove existing chip with this id if re-rendering
+  const existing = document.getElementById(id);
+  if (existing) existing.remove();
+
+  const chip = document.createElement('div');
+  chip.id = id;
+  chip.className = 'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border ' +
+    (status === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+     status === 'failed'  ? 'bg-red-50 border-red-200 text-red-800' :
+                            'bg-slate-50 border-slate-200 text-slate-700');
+
+  const nameSpan = document.createElement('span');
+  nameSpan.className = 'max-w-[160px] truncate';
+  nameSpan.textContent = filename;
+
+  const iconSpan = document.createElement('span');
+  if (status === 'pending') {
+    iconSpan.innerHTML = '<svg class="w-3 h-3 spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/></svg>';
+  } else if (status === 'success') {
+    iconSpan.className = 'text-green-600';
+    iconSpan.textContent = '✓';
+  } else {
+    iconSpan.className = 'text-red-600';
+    iconSpan.textContent = '✗';
+  }
+
+  const removeBtn = document.createElement('button');
+  removeBtn.type = 'button';
+  removeBtn.className = 'ml-0.5 text-slate-400 hover:text-slate-600 leading-none';
+  removeBtn.textContent = '×';
+  removeBtn.onclick = () => removeChip(id);
+
+  chip.appendChild(nameSpan);
+  chip.appendChild(iconSpan);
+  if (status === 'failed' && errorMsg) {
+    const errSpan = document.createElement('span');
+    errSpan.className = 'text-red-500';
+    errSpan.textContent = errorMsg.length > 40 ? errorMsg.slice(0, 40) + '…' : errorMsg;
+    chip.appendChild(errSpan);
+  }
+  chip.appendChild(removeBtn);
+  container.appendChild(chip);
+}
+
+function removeChip(id) {
+  const el = document.getElementById(id);
+  if (el) el.remove();
+  docTexts.delete(id);
+  docStatus.delete(id);
+  updateSubmitState();
+}
+
+async function processDoc(id, file) {
+  const formData = new FormData();
+  formData.append('file', file, file.name);
+  try {
+    const res = await fetch('/api/process-document', { method: 'POST', body: formData });
+    const json = await res.json();
+    if (json.success) {
+      docTexts.set(id, { filename: json.filename, extracted_text: json.extracted_text });
+      docStatus.set(id, 'success');
+      renderChip(id, file.name, 'success');
+    } else {
+      docStatus.set(id, 'failed');
+      renderChip(id, file.name, 'failed', json.error || 'Processing failed');
+    }
+  } catch {
+    docStatus.set(id, 'failed');
+    renderChip(id, file.name, 'failed', 'Upload failed');
+  }
+  updateSubmitState();
+}
+
+function updateSubmitState() {
+  const hasPendingOrFailed = Array.from(docStatus.values()).some(s => s === 'pending' || s === 'failed');
+  const btn = document.getElementById('submit-btn');
+  if (hasPendingOrFailed) {
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+  } else {
+    btn.disabled = false;
+    btn.classList.remove('opacity-50', 'cursor-not-allowed');
+  }
+}
+
 // ── State ──────────────────────────────────────────────────────────────────
 let activeTab = 'vin', images = [], currentRunId = null, ws = null;
 let agentResults = {}, finalReport = null;
@@ -339,6 +461,8 @@ async function submitListing() {
     return showErr('Upload at least one photo, or describe damage in the notes field.');
 
   const imageUrls = fv('image_urls_text').split('\n').map(s => s.trim()).filter(Boolean);
+  const historyDocTexts = Array.from(docTexts.values())
+    .map(({ filename, extracted_text }) => '[Document: ' + filename + ']\n' + extracted_text);
   const body = {
     input_method: activeTab,
     mileage: +fv('mileage'), asking_price: +fv('asking_price'), location: fv('location'),
@@ -355,6 +479,7 @@ async function submitListing() {
     ...(fv('user_damage_notes') && { user_damage_notes: fv('user_damage_notes') }),
     ...(imageUrls.length && { image_urls: imageUrls }),
     ...(images.length && { image_base64: images }),
+    ...(historyDocTexts.length && { history_document_texts: historyDocTexts }),
   };
 
   document.getElementById('submit-btn').disabled = true;
@@ -625,6 +750,10 @@ function resetToForm() {
   document.getElementById('photo-label').textContent = 'Upload photos...';
   const lbl = document.getElementById('vin-confirmed-label');
   if (lbl) { lbl.textContent = ''; lbl.classList.add('hidden'); }
+  // clear document chips
+  docTexts.clear(); docStatus.clear();
+  document.getElementById('doc-chips').innerHTML = '';
+  updateSubmitState();
   showState('form');
 }
 
