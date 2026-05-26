@@ -57,6 +57,18 @@ def _extension(filename: str) -> str:
 async def _extract_via_haiku(content: bytes, media_type: str) -> str:
     client = get_anthropic_client()
     b64_data = base64.standard_b64encode(content).decode("utf-8")
+    # PDFs use the native document source type; images use the image source type.
+    content_block: dict = (
+        {
+            "type": "document",
+            "source": {"type": "base64", "media_type": media_type, "data": b64_data},
+        }
+        if media_type == "application/pdf"
+        else {
+            "type": "image",
+            "source": {"type": "base64", "media_type": media_type, "data": b64_data},
+        }
+    )
     response = await client.messages.create(  # type: ignore[call-overload]
         model=_HAIKU_MODEL,
         max_tokens=2048,
@@ -64,18 +76,8 @@ async def _extract_via_haiku(content: bytes, media_type: str) -> str:
             {
                 "role": "user",
                 "content": [
-                    {  # type: ignore[list-item]
-                        "type": "image",
-                        "source": {
-                            "type": "base64",
-                            "media_type": media_type,
-                            "data": b64_data,
-                        },
-                    },
-                    {
-                        "type": "text",
-                        "text": _HAIKU_PROMPT,
-                    },
+                    content_block,  # type: ignore[list-item]
+                    {"type": "text", "text": _HAIKU_PROMPT},
                 ],
             }
         ],
@@ -132,8 +134,8 @@ async def process_document(filename: str, content: bytes) -> ProcessedDocument:
                     error=None,
                 )
 
-            # pdfplumber returned empty (scanned PDF) — fall through to Haiku
-            extracted = await _extract_via_haiku(content, "image/jpeg")
+            # pdfplumber returned empty (scanned PDF) — fall through to Haiku using native PDF type
+            extracted = await _extract_via_haiku(content, "application/pdf")
         else:
             media_type = _MEDIA_TYPES[ext]
             extracted = await _extract_via_haiku(content, media_type)
