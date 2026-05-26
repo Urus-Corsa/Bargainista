@@ -129,6 +129,28 @@ async def resolve_vin(listing: ListingInput) -> dict | None:
 # ---------------------------------------------------------------------------
 
 
+def _combine_history_text(listing: ListingInput) -> str | None:
+    """Merge history_report_text and history_document_texts into a single labeled string.
+
+    If history_document_texts is empty, returns history_report_text unchanged (may be None).
+    If documents are present, prepends a [User notes] section (when history_report_text is
+    non-empty) and appends each document entry separated by blank lines. Each entry in
+    history_document_texts is already pre-labeled by the frontend:
+        "[Document: filename.pdf]\\n{extracted_text}"
+    """
+    if not listing.history_document_texts:
+        return listing.history_report_text
+
+    parts: list[str] = []
+
+    if listing.history_report_text:
+        parts.append(f"[User notes]\n{listing.history_report_text}")
+
+    parts.extend(listing.history_document_texts)
+
+    return "\n\n".join(parts)
+
+
 async def prepare_listing(listing: ListingInput) -> tuple[ListingInput, list[str]]:
     """Normalise a raw ListingInput and return it alongside the prepared image list.
 
@@ -136,7 +158,8 @@ async def prepare_listing(listing: ListingInput) -> tuple[ListingInput, list[str
         (enriched_listing, base64_images)
 
         enriched_listing — original listing with year/make/model populated if VIN
-                           was provided and MCP resolution succeeded.
+                           was provided and MCP resolution succeeded, and with
+                           history_document_texts merged into history_report_text.
         base64_images    — flat list of base64-encoded image strings ready for
                            the Vision agent. May be empty if all fetches failed.
 
@@ -165,6 +188,14 @@ async def prepare_listing(listing: ListingInput) -> tuple[ListingInput, list[str
             enriched.make,
             enriched.model,
             enriched.trim or "not available",
+        )
+
+    combined_history = _combine_history_text(enriched)
+    if combined_history != enriched.history_report_text:
+        enriched = enriched.model_copy(update={"history_report_text": combined_history})
+        logger.info(
+            "Merged %d history document(s) into history_report_text",
+            len(listing.history_document_texts),
         )
 
     if not images:

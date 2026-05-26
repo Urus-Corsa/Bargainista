@@ -1,7 +1,8 @@
 import json
+import os
 
 import redis.asyncio as aioredis
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -10,7 +11,10 @@ from app.db.session import get_db
 from app.mcp.client import call_tool
 from app.models.db_models import AnalysisRun, RunStatus
 from app.models.schemas import ListingInput
+from app.utils.document_processing import process_document
 from app.workers.tasks import run_analysis_task
+
+_ACCEPTED_EXTENSIONS = {".pdf", ".jpg", ".jpeg", ".png", ".webp"}
 
 router = APIRouter()
 
@@ -18,6 +22,33 @@ router = APIRouter()
 @router.get("/health")
 async def health() -> dict:
     return {"status": "ok"}
+
+
+@router.post("/api/process-document")
+async def process_document_upload(file: UploadFile) -> dict:
+    """Extract text from an uploaded PDF or image file.
+
+    Returns the extracted text immediately so the frontend can display per-file
+    status before the user submits the main analysis form. Binary is never
+    forwarded to the analysis pipeline — only the extracted text string is kept.
+    """
+    filename = file.filename or ""
+    ext = os.path.splitext(filename.lower())[1]
+    if ext not in _ACCEPTED_EXTENSIONS:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Unsupported file type '{ext or 'none'}'. Accepted: .pdf, .jpg, .jpeg, .png, .webp",
+        )
+
+    content = await file.read()
+    result = await process_document(filename, content)
+
+    return {
+        "success": result["success"],
+        "extracted_text": result["text"] if result["success"] else None,
+        "filename": result["filename"],
+        "error": result["error"],
+    }
 
 
 @router.get("/api/vin/{vin}")
