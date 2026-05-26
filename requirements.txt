@@ -31,5 +31,8 @@ httpx>=0.28.0
 # Image handling
 pillow>=11.1.0
 
+# PDF text extraction (pdfplumber is pure Python — no system packages required)
+pdfplumber>=0.11.0
+
 # Environment & utilities
 python-dotenv>=1.1.0
