@@ -462,7 +462,7 @@ async def run(listing: ListingInput) -> HistoryAgentResult:
 
     response = await client.messages.create(  # type: ignore[call-overload]
         model="claude-sonnet-4-6",
-        max_tokens=2048,
+        max_tokens=4096,
         system=_SYSTEM_PROMPT,
         tools=[_HISTORY_TOOL],  # type: ignore[list-item]
         tool_choice={"type": "tool", "name": "history_analysis"},
@@ -488,13 +488,13 @@ async def run(listing: ListingInput) -> HistoryAgentResult:
     repair_mentions = [_build_repair_estimate(item) for item in raw.get("repair_mentions", [])]
 
     return HistoryAgentResult(
-        risk_score=raw["risk_score"],
+        risk_score=raw.get("risk_score", 5),
         red_flags=raw.get("red_flags", []),
-        mileage_consistent=raw["mileage_consistent"],
+        mileage_consistent=raw.get("mileage_consistent", True),
         ownership_signals=raw.get("ownership_signals", []),
         accident_mentions=raw.get("accident_mentions", []),
         title_concerns=raw.get("title_concerns", []),
         repair_mentions=repair_mentions,
         data_sources_available=data_sources,  # Python-set — never from LLM
-        summary=raw["summary"],
+        summary=raw.get("summary", "History analysis incomplete — response truncated."),
     )

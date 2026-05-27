@@ -31,6 +31,7 @@ _HAIKU_PROMPT = (
 )
 
 _HAIKU_MODEL = "claude-haiku-4-5-20251001"
+_MAX_EXTRACTED_CHARS = 50_000
 
 
 class ProcessedDocument(TypedDict):
@@ -83,7 +84,7 @@ async def _extract_via_haiku(content: bytes, media_type: str) -> str:
         ],
     )
     text_blocks = [block.text for block in response.content if block.type == "text"]
-    return "\n".join(text_blocks).strip()
+    return "\n".join(text_blocks).strip().replace("\x00", "")[:_MAX_EXTRACTED_CHARS]
 
 
 async def _process_pdf(content: bytes) -> str:
@@ -95,7 +96,7 @@ async def _process_pdf(content: bytes) -> str:
             page_text = page.extract_text()
             if page_text:
                 text_parts.append(page_text)
-    return "\n".join(text_parts).strip()
+    return "\n".join(text_parts).strip().replace("\x00", "")[:_MAX_EXTRACTED_CHARS]
 
 
 # ---------------------------------------------------------------------------
