@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from enum import Enum
 
-from pydantic import BaseModel, Field, HttpUrl, model_validator
+from pydantic import BaseModel, Field, HttpUrl, field_validator, model_validator
 
 # ---------------------------------------------------------------------------
 # Enums
@@ -197,12 +197,32 @@ class ListingInput(BaseModel):
         description="Base64-encoded images from file uploads",
     )
 
+    # History documents — already-extracted text strings from the frontend.
+    # Each entry is pre-labeled by the frontend: "[Document: filename]\n{extracted_text}".
+    # Ingestion combines these with history_report_text into a single labeled block.
+    # Binary is never sent here — processing happens via POST /api/process-document first.
+    history_document_texts: list[str] = Field(
+        default_factory=list,
+        description="Pre-labeled extracted-text strings from uploaded history documents. "
+                    "Each entry: '[Document: {filename}]\\n{extracted_text}'.",
+    )
+
     # User's own observations — distinct from listing copy, safe to show Vision agent
     user_damage_notes: str | None = Field(
         None,
         description="Free-text from the user describing known issues not visible in photos. "
                     "The user's own words, not the seller's listing copy.",
     )
+
+    @field_validator("history_report_text", "user_damage_notes", "listing_description", mode="before")
+    @classmethod
+    def strip_null_bytes_str(cls, v: object) -> object:
+        return v.replace("\x00", "") if isinstance(v, str) else v
+
+    @field_validator("history_document_texts", mode="before")
+    @classmethod
+    def strip_null_bytes_list(cls, v: object) -> object:
+        return [t.replace("\x00", "") if isinstance(t, str) else t for t in v] if isinstance(v, list) else v
 
     @model_validator(mode="after")
     def vehicle_identity_present(self) -> ListingInput:
