@@ -18,6 +18,7 @@ Entry points:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import datetime
 from typing import TypedDict
@@ -26,6 +27,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.llm import get_anthropic_client
+from app.mcp.client import call_tool
 from app.models.db_models import BrandModifier, DepreciationCategory, VariantOverride
 from app.models.schemas import (
     FinanceAgentResult,
@@ -98,6 +100,15 @@ ANNUAL_MAINTENANCE_BASE: dict[str, int] = {
 }
 
 _LOAN_TERM_MONTHS = 60  # 5-year loan — industry standard for used-car financing
+
+# Respray cost multiplier by paint complexity tier.
+# Applied to cosmetic-category Vision repair items only.
+# Source: ICAR / Mitchell body shop labor guides.
+_PAINT_COMPLEXITY_MULTIPLIER: dict[str, float] = {
+    "standard": 1.00,
+    "metallic": 1.15,
+    "pearl_or_tricoat": 1.35,
+}
 
 # ---------------------------------------------------------------------------
 # Category classification
@@ -600,17 +611,92 @@ async def run_dependent(
 
     # ------------------------------------------------------------------
     # 5. Repair cost aggregation (Vision + History)
+    #
+    # Per-item MCP normalization: call get_repair_estimate for each item
+    # concurrently via asyncio.gather.  If MCP returns available=True, use
+    # its cost_low/cost_high; otherwise keep the item's LLM-estimated costs.
+    #
+    # paint_complexity multiplier: applied after MCP normalization, to
+    # cosmetic-category Vision items only.  History items never receive it —
+    # paint complexity is a visual property detected exclusively by Vision.
     # ------------------------------------------------------------------
-    repair_low = (vision_result.total_repair_estimate_low if vision_result else 0) + (
-        sum(r.estimated_cost_low for r in history_result.repair_mentions)
-        if history_result
-        else 0
-    )
-    repair_high = (vision_result.total_repair_estimate_high if vision_result else 0) + (
-        sum(r.estimated_cost_high for r in history_result.repair_mentions)
-        if history_result
-        else 0
-    )
+
+    # Resolve paint complexity multiplier once (Vision items only)
+    paint_complexity = vision_result.paint_complexity if vision_result else None
+    if paint_complexity is not None:
+        paint_mult = _PAINT_COMPLEXITY_MULTIPLIER.get(paint_complexity.value, 1.0)
+    else:
+        paint_mult = 1.0
+
+    vision_repair_low = 0
+    vision_repair_high = 0
+    if vision_result:
+        vision_items = vision_result.repair_items
+        # Fire all MCP calls concurrently
+        mcp_tasks = [
+            call_tool(
+                "get_repair_estimate",
+                {
+                    "make": listing.make,
+                    "model": listing.model,
+                    "year": listing.year,
+                    "repair_type": item.component,
+                },
+            )
+            for item in vision_items
+        ]
+        mcp_results = await asyncio.gather(*mcp_tasks)
+
+        for item, mcp_result in zip(vision_items, mcp_results):
+            # MCP normalization: use MCP costs if available, else LLM estimate
+            if mcp_result is not None and mcp_result.get("available"):
+                cost_low = mcp_result.get("cost_low", item.estimated_cost_low)
+                cost_high = mcp_result.get("cost_high", item.estimated_cost_high)
+            else:
+                cost_low = item.estimated_cost_low
+                cost_high = item.estimated_cost_high
+
+            # paint_complexity multiplier — cosmetic items only
+            if item.repair_category.value == "cosmetic":
+                cost_low = round(cost_low * paint_mult)
+                cost_high = round(cost_high * paint_mult)
+
+            vision_repair_low += cost_low
+            vision_repair_high += cost_high
+
+    history_repair_low = 0
+    history_repair_high = 0
+    if history_result:
+        history_items = history_result.repair_mentions
+        # Fire all MCP calls concurrently
+        mcp_tasks = [
+            call_tool(
+                "get_repair_estimate",
+                {
+                    "make": listing.make,
+                    "model": listing.model,
+                    "year": listing.year,
+                    "repair_type": item.component,
+                },
+            )
+            for item in history_items
+        ]
+        mcp_results = await asyncio.gather(*mcp_tasks)
+
+        for item, mcp_result in zip(history_items, mcp_results):
+            # MCP normalization only — no paint multiplier for History items
+            if mcp_result is not None and mcp_result.get("available"):
+                cost_low = mcp_result.get("cost_low", item.estimated_cost_low)
+                cost_high = mcp_result.get("cost_high", item.estimated_cost_high)
+            else:
+                cost_low = item.estimated_cost_low
+                cost_high = item.estimated_cost_high
+
+            history_repair_low += cost_low
+            history_repair_high += cost_high
+
+    repair_low = vision_repair_low + history_repair_low
+    repair_high = vision_repair_high + history_repair_high
 
     # ------------------------------------------------------------------
     # 8. Finance score (deterministic)
