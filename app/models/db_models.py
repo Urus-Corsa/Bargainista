@@ -67,6 +67,36 @@ class RecommendationEnum(str, enum.Enum):
 
 
 # ---------------------------------------------------------------------------
+# User
+# ---------------------------------------------------------------------------
+
+
+class User(Base):
+    """Identity record synced from Clerk via webhook.
+
+    clerk_user_id is the primary external identifier — it is what Clerk sends in
+    JWT sub claims and webhook payloads. email is stored for display purposes only;
+    Clerk is the authoritative source of truth for user identity.
+    """
+
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
+    )
+    clerk_user_id: Mapped[str] = mapped_column(String, nullable=False, unique=True)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+    # Relationship — lazy load is fine; runs are fetched independently
+    analysis_runs: Mapped[list[AnalysisRun]] = relationship(
+        "AnalysisRun", back_populates="user", lazy="select"
+    )
+
+
+# ---------------------------------------------------------------------------
 # AnalysisRun
 # ---------------------------------------------------------------------------
 
@@ -87,8 +117,15 @@ class AnalysisRun(Base):
     listing_input: Mapped[dict] = mapped_column(JSONB, nullable=False)
     # Complete serialized FinalReport — written on completion, read for late-joining WS clients
     full_result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Nullable — anonymous runs (no auth) have user_id = NULL; ON DELETE SET NULL so runs survive user deletion
+    user_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     # Relationships
+    user: Mapped[User | None] = relationship("User", back_populates="analysis_runs")
     agent_results: Mapped[list[AgentResult]] = relationship(
         "AgentResult", back_populates="run", cascade="all, delete-orphan"
     )
