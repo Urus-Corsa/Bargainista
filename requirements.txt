@@ -34,5 +34,9 @@ pillow>=11.1.0
 # PDF text extraction (pdfplumber is pure Python — no system packages required)
 pdfplumber>=0.11.0
 
+# Clerk auth — JWT verification and webhook signature
+PyJWT>=2.9.0
+svix>=1.0.0
+
 # Environment & utilities
 python-dotenv>=1.1.0

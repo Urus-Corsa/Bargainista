@@ -26,6 +26,12 @@ class Settings(BaseSettings):
     # Set a strong random value in .env; empty string disables admin endpoints
     admin_api_key: str = ""
 
+    # Clerk auth — JWT verification and webhook signature
+    # clerk_jwks_url: Clerk JWKS endpoint; default is the standard Clerk URL
+    clerk_jwks_url: str = "https://api.clerk.com/v1/jwks"
+    # clerk_webhook_secret: set in .env; empty string skips verification with a warning
+    clerk_webhook_secret: str = ""
+
     debug: bool = False
 
 
