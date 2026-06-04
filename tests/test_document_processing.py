@@ -6,8 +6,7 @@ the routing logic and error handling, not the accuracy of OCR output.
 
 from __future__ import annotations
 
-from io import BytesIO
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 

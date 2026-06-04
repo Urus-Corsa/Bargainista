@@ -10,13 +10,12 @@ from __future__ import annotations
 import pytest
 
 from app.agents.finance import (
-    ANNUAL_MAINTENANCE_BASE,
     _PAINT_COMPLEXITY_MULTIPLIER,
+    ANNUAL_MAINTENANCE_BASE,
     _annual_maintenance,
     _compute_finance_score,
     _monthly_payment,
 )
-
 
 # ---------------------------------------------------------------------------
 # _compute_finance_score
